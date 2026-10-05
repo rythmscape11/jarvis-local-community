@@ -15,5 +15,13 @@
   "elapsed_seconds": 7.29,
   "physical_microphone_tested": false,
   "backend_regression_tests_passed": 192,
-  "bundled_timezone_smoke_passed": true
+  "bundled_timezone_smoke_passed": true,
+  "selected_voice_preview": {
+    "voice": "gemini-Aoede",
+    "http_status": 200,
+    "elapsed_seconds": 4.48,
+    "owner_conversation_sent": false,
+    "sample_rate": 24000,
+    "duration_seconds": 9.76
+  }
 }

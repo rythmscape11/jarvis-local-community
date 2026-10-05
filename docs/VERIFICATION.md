@@ -43,3 +43,5 @@ The first Windows CI run timed out. Its log identified missing `tzdata` and `Zon
 The corrected Windows rerun completed all backend cases in 41 seconds: 190 passed and two POSIX-only mode-bit assertions failed. Those assertions now run only on POSIX; the corresponding OAuth/encryption/restart tests still execute on Windows. This does not establish Windows ACL isolation or hardware behavior; those require a real Windows account/device check.
 
 After the owner approved Keychain access, the installed 0.3.1 Gemini synthetic greeting passed (HTTP 200), with 7279.0 ms first-token time and 7280.4 ms total. It sent no owner history and did not change billing. The selected model and Aoede voice were preserved.
+
+The owner's selected Aoede Google voice also generated valid audio from the installed 0.3.1 preview endpoint: HTTP 200, 24 kHz WAV, 9.76 seconds audio in 4.48 seconds. This synthetic request sent no owner conversation content; physical playback/subjective naturalness were not tested. The real GitHub latest-release feed reports v0.3.1; the app's verifier recognizes it as available to 0.2.0 and up to date for 0.3.1, without automatic executable installation.
