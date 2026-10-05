@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Microphone, Player, PlaybackInterruption, pcmBase64 } from "./audio";
 import { Visualizer } from "./Visualizer";
+import { SourceCards, type SourceData } from "./SourceCards";
 import { Automations } from "./Automations";
 import { responseError } from "./http";
 import { OwnerSecurityPanel } from "./OwnerSecurity";
@@ -57,6 +58,9 @@ type Config = {
   timezone: string;
   context_tokens: number;
   voice_pace: number;
+  google_voice_enabled: boolean;
+  google_search_enabled: boolean;
+  google_tts_model: string;
   online_voice_enabled: boolean;
   online_voice_fallback: string;
   update_checks: boolean;
@@ -111,6 +115,10 @@ declare global {
 }
 const uuid = () => crypto.randomUUID();
 const voiceNames: Record<string, string> = {
+  "gemini-Kore": "Kore · Google online",
+  "gemini-Aoede": "Aoede · Google online",
+  "gemini-Puck": "Puck · Google online",
+  "gemini-Charon": "Charon · Google online",
   "kokoro-am_michael": "Michael · American",
   "kokoro-af_heart": "Heart · American",
   "kokoro-af_bella": "Bella · American",
@@ -167,6 +175,7 @@ async function api<T>(
   return response.json();
 }
 export default function App() {
+  const [sources, setSources] = useState<Record<string, SourceData>>({});
   const [focused, setFocused] = useState(true);
   const [updates, setUpdates] = useState<{ id: string; title: string }[]>([]);
   const [automationSection, setAutomationSection] = useState("workflows");
@@ -630,6 +639,9 @@ export default function App() {
         player.current.push(message.audio);
       }
       if (message.type === "tool") {
+        if (message.result?.ok && ["get_news", "search_current_news", "get_directions"].includes(message.name)) {
+          setSources(old => ({...old, [message.turn_id]: message.result.data}));
+        }
         if (message.name === "set_voice" && message.result?.ok) {
           setConfig((current) =>
             current
@@ -1287,7 +1299,7 @@ export default function App() {
                       <span className="message-label">
                         {m.role === "user" ? "YOU" : "JARVIS"}
                       </span>
-                      <div>{m.content}</div>
+                      <div>{m.content}{m.role === "assistant" && sources[m.turn] && <SourceCards data={sources[m.turn]} />}</div>
 
                     </article>
                   ))
@@ -1873,8 +1885,12 @@ export default function App() {
                     voices:
                       health?.tts.voices.filter(
                         (v) =>
-                          !v.startsWith("kokoro-") && !v.startsWith("groq-"),
+                          !v.startsWith("kokoro-") && !v.startsWith("groq-") && !v.startsWith("gemini-"),
                       ) || [],
+                  },
+                  {
+                    label: "Online Google voices",
+                    voices: health?.tts.voices.filter(v => v.startsWith("gemini-")) || [],
                   },
                   {
                     label: "Online Groq voices",
@@ -2187,7 +2203,15 @@ export default function App() {
                   quotas and pricing apply. Choose a local voice for offline
                   use.
                 </p>
-                {config.online_voice_enabled && (
+                <section className="update-settings">
+                  <h3>Live information</h3>
+                  <p className="setting-note">Model training has a cutoff. Jarvis checks sources before answering current questions, and displays publication dates and retrieval times. Conversation memory provides your context; it does not update model weights.</p>
+                  <label className="check-label"><input type="checkbox" checked={config.google_search_enabled ?? false} onChange={e => setConfig({...config, google_search_enabled: e.target.checked})} />Enable Google cited search for current public questions</label>
+                  <p className="setting-note">Uses your own Gemini key saved under the Google provider preset. Sends the current public topic, without saved conversation excerpts. Requires internet. Limited to 10 attempts per UTC day. Provider quotas and pricing apply; free-tier data may be used by Google to improve products. No billing is enabled by Jarvis.</p>
+                  <label className="check-label"><input type="checkbox" checked={config.google_voice_enabled ?? false} onChange={e => setConfig({...config, google_voice_enabled:e.target.checked,voice: !e.target.checked && config.voice.startsWith("gemini-") ? "kokoro-af_heart" : config.voice})}/>Enable optional Google voices</label>
+                  <p className="setting-note">Sends the spoken reply to Google. Limited to 20 synthesis attempts per UTC day; longer replies may need several attempts. Local Heart remains available offline. Account/model access must be verified.</p>
+                </section>
+                {(config.online_voice_enabled || config.google_voice_enabled) && (
                   <label>
                     Local voice if online speech fails
                     <select
@@ -2225,7 +2249,7 @@ export default function App() {
                   </label>
                 )}
                 <section className="update-settings">
-                  <h3>Software updates · {softwareUpdate?.current_version || "0.2.0"}</h3>
+                  <h3>Software updates · {softwareUpdate?.current_version || "0.3.0"}</h3>
                   <label className="check-label"><input type="checkbox" checked={config.update_checks ?? true} onChange={(e) => setConfig({...config,update_checks:e.target.checked})}/> Check for new releases daily</label>
                   <p className="setting-note">Only public release metadata is requested from GitHub. No chats, memory, credentials or device identifier are sent. Updates require your review; automatic installation is not enabled.</p>
                   <button type="button" onClick={() => void safe(async () => {setSoftwareUpdate(await api<NonNullable<typeof softwareUpdate>>("/updates/check", "POST"));})}>Check now</button>
@@ -2255,21 +2279,11 @@ export default function App() {
                       setConfig({ ...config, voice: e.target.value })
                     }
                   >
-                    {(config.online_voice_enabled
-                      ? [
-                          ...new Set([
-                            ...(health?.tts.voices || []),
-                            "groq-hannah",
-                            "groq-diana",
-                            "groq-autumn",
-                            "groq-austin",
-                            "groq-daniel",
-                            "groq-troy",
-                          ]),
-                        ]
-                      : (health?.tts.voices || []).filter(
-                          (v) => !v.startsWith("groq-"),
-                        )
+                    {([...new Set([
+                      ...(health?.tts.voices || []).filter(v => !v.startsWith("groq-") && !v.startsWith("gemini-")),
+                      ...(config.online_voice_enabled ? ["groq-hannah","groq-diana","groq-autumn","groq-austin","groq-daniel","groq-troy"] : []),
+                      ...(config.google_voice_enabled ? ["gemini-Kore","gemini-Aoede","gemini-Puck","gemini-Charon"] : []),
+                    ])]
                     ).map((v) => (
                       <option key={v} value={v}>
                         {voiceNames[v] || v}

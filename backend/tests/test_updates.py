@@ -38,7 +38,7 @@ async def test_opt_out_offline_cache_and_privacy(tmp_path, monkeypatch):
             pass
 
         async def aiter_bytes(self):
-            yield json.dumps({"tag_name": "v0.3.0"}).encode()
+            yield json.dumps({"tag_name": "v9.0.0"}).encode()
 
         async def __aenter__(self):
             return self

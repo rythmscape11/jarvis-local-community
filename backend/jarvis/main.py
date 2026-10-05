@@ -33,6 +33,8 @@ from .providers import ModelRouter, credential_name
 from .credentials import credentials
 from .updates import Updates
 from .owner import OwnerLock, Speaker
+from .google_ai import GoogleAI
+from .devices import Devices, GatewayServer, gateway, local_routes
 from .calendar import Calendar
 from .control import Control
 from .news import News
@@ -82,6 +84,9 @@ news = News(store, lambda: settings)
 tools.control = control
 tools.news = news
 tools.calendar = calendar
+google_ai = GoogleAI(store, lambda: settings)
+tools.google = google_ai
+tts.google = google_ai
 
 
 def select_voice(voice):
@@ -109,6 +114,7 @@ secret = secret_file.read_text().strip()
 sessions = {}
 connections = set()
 owner = OwnerLock(config.DATA, Speaker(config.MODELS))
+devices = Devices(store, config.DATA)
 
 
 async def lock_owner_connections():
@@ -122,6 +128,13 @@ async def lock_owner_connections():
 @asynccontextmanager
 async def lifespan(app):
     jobs.start()
+    companion = None
+    if os.getenv("JARVIS_COMPANION_SERVER", "1") != "0":
+        companion = GatewayServer(
+            devices,
+            gateway(devices, owner, sessions, websocket, config.ROOT / "frontend/dist"),
+        )
+        await companion.start()
     # Queue startup briefs conservatively; a full queue must not prevent voice startup.
     with contextlib.suppress(ValueError):
         workflows.startup()
@@ -130,7 +143,7 @@ async def lifespan(app):
         if os.getenv("JARVIS_WARMUP", "1") == "0":
             return
         # Keep initialization away from the owner's first spoken request.
-        if not settings.voice.startswith("groq-"):
+        if not settings.voice.startswith(("groq-", "gemini-")):
             with contextlib.suppress(Exception):
                 await tts.synthesize("I'm here.", settings.voice)
         if settings.provider == "ollama":
@@ -177,6 +190,8 @@ async def lifespan(app):
     workflow_clock = asyncio.create_task(workflow_scheduler())
     scheduler = asyncio.create_task(daily_news())
     yield
+    if companion:
+        await companion.close()
     workflow_clock.cancel()
     await asyncio.gather(workflow_clock, return_exceptions=True)
     scheduler.cancel()
@@ -187,11 +202,13 @@ async def lifespan(app):
     await model.close()
     await stt.close()
     await tts.close()
+    await google_ai.close()
     store.close()
 
 
 app = FastAPI(title="Jarvis Local", lifespan=lifespan, docs_url=None, redoc_url=None)
 app.include_router(routes(workflows, connectors))
+app.include_router(local_routes(devices))
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"],
@@ -522,7 +539,10 @@ async def configure(body: Settings):
         and body.model + ":latest" not in await model.ollama.available()
     ):
         raise HTTPException(400, "Select a downloaded local model")
-    if body.voice not in tts.available(online_enabled=body.online_voice_enabled):
+    if body.voice not in tts.available(
+        online_enabled=body.online_voice_enabled,
+        google_enabled=body.google_voice_enabled,
+    ):
         raise HTTPException(
             400, "Select an available voice; online voices require explicit enablement"
         )

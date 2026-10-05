@@ -13,6 +13,10 @@ from .custom_api import APIRead, read_api
 from .connectors import Action, MailMessage, MailReply
 from .calendar_actions import CalendarEvent, CalendarUpdate, prepare as prepare_calendar
 from .phone import PhoneCall, prepare as prepare_phone
+from .calendar_actions import CalendarCancel, prepare_cancel
+from .google_ai import Search
+from .scheduling import Availability, suggest
+from .navigation import Directions, AppointmentBrief, directions, brief
 
 
 class Arguments(BaseModel):
@@ -84,6 +88,10 @@ class NewsQuery(Arguments):
 
 
 VOICE_NAMES = {
+    "Google Kore": "gemini-Kore",
+    "Google Aoede": "gemini-Aoede",
+    "Google Puck": "gemini-Puck",
+    "Google Charon": "gemini-Charon",
     "Michael": "kokoro-am_michael",
     "Heart": "kokoro-af_heart",
     "Bella": "kokoro-af_bella",
@@ -113,6 +121,10 @@ VOICE_NAMES = {
 
 class VoiceChoice(Arguments):
     name: Literal[
+        "Google Kore",
+        "Google Aoede",
+        "Google Puck",
+        "Google Charon",
         "Michael",
         "Heart",
         "Bella",
@@ -155,6 +167,36 @@ class EmailDraft(Arguments):
 
 
 DEFINITIONS = {
+    "search_current_news": (
+        Search,
+        "Use optional Google cited search for an explicit public news/research topic only. Never send private mail, memory or account data as the query. Requires owner opt-in and their Gemini key. Returns real citation annotations; fails closed if absent.",
+        "read",
+        50,
+    ),
+    "cancel_calendar_event": (
+        CalendarCancel,
+        "Prepare cancellation of an actual owned single event from read_calendar. Exact destructive change and guest notifications require desktop review; no change runs before approval.",
+        "approval_required",
+        20,
+    ),
+    "find_meeting_slots": (
+        Availability,
+        "Suggest conflict-free slots from your actual primary calendar within seven days. Only the owner's availability is checked, not guests. Do not claim a booking. Requires Calendar editing OAuth.",
+        "read",
+        30,
+    ),
+    "get_directions": (
+        Directions,
+        "Create native Maps links for an actual owner-supplied destination. Native Maps on the iPhone supplies live turn-by-turn navigation. Do not invent a route, traffic, ETA or steps. Does not collect GPS or open links automatically.",
+        "read",
+        5,
+    ),
+    "prepare_appointment_call": (
+        AppointmentBrief,
+        "Create a local call brief with preferred times, questions and a confirmation checklist. Does not place a call or book anything. Ask for actual recipient and preferred times; never guess details.",
+        "local_write",
+        10,
+    ),
     "request_phone_call": (
         PhoneCall,
         "Prepare an owner-reviewed iPhone call handoff on this Mac. Use an actual owner-supplied international number and recipient; never invent contact details. Only opens Phone after review. Jarvis cannot conduct the cellular call or verify appointment booking.",
@@ -163,7 +205,7 @@ DEFINITIONS = {
     ),
     "create_calendar_event": (
         CalendarEvent,
-        "Prepare a primary Google Calendar event for owner review. Resolve dates and include explicit start/end and timezone. Does not save until the owner approves in Automations → Connections. No invitations or recurring events.",
+        "Prepare a primary Google Calendar event for owner review. Include explicit start/end/timezone. Optional actual attendee email addresses send invitations ONLY after exact review. google_meet requests a new Meet link; account support may vary. Never guess recipients. No recurring events.",
         "approval_required",
         20,
     ),
@@ -247,9 +289,9 @@ DEFINITIONS = {
     ),
     "get_news": (
         NewsQuery,
-        "Read cached news headlines and dates. Always disclose cache age and cite source URLs. Analyze cautiously; headlines are not full articles.",
+        "Read source RSS headlines, refreshing a cache older than 15 minutes when networking is enabled. Returns actual publication/retrieval times and stale/offline status. Cite URLs; headlines are not full articles.",
         "read",
-        5,
+        15,
     ),
     "read_calendar": (
         Arguments,
@@ -413,6 +455,18 @@ class Tools:
 
     async def dispatch(self, name, args):
         s = self.store
+        if name == "cancel_calendar_event":
+            if not self.connectors:
+                raise ValueError("Connectors unavailable")
+            return await prepare_cancel(self.connectors, args)
+        if name == "find_meeting_slots":
+            if not self.connectors:
+                raise ValueError("Connectors unavailable")
+            return await suggest(self.connectors, args)
+        if name == "get_directions":
+            return directions(args)
+        if name == "prepare_appointment_call":
+            return brief(s, args)
         if name == "request_phone_call":
             if not self.connectors:
                 raise ValueError("Connectors unavailable")
@@ -483,12 +537,26 @@ class Tools:
             if self.settings().voice != selected:
                 raise ValueError("Voice setting could not be verified")
             return {"voice": selected, "name": args.name, "saved": True}
+        if name == "search_current_news":
+            if not getattr(self, "google", None):
+                raise ValueError("Google search adapter unavailable")
+            return await self.google.search(args.query)
         if name == "get_news":
             if not self.news:
                 raise ValueError("News cache unavailable")
-            result = self.news.search(args.query, args.category, limit=5)
+            result = await self.news.current(args.query, args.category, limit=5)
             result["items"] = [
-                {k: row[k] for k in ("title", "source", "published", "url", "excerpt")}
+                {
+                    k: row[k]
+                    for k in (
+                        "title",
+                        "source",
+                        "published",
+                        "fetched",
+                        "url",
+                        "excerpt",
+                    )
+                }
                 for row in result["items"]
             ]
             for item in result["items"]:

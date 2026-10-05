@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS workflows(id TEXT PRIMARY KEY,definition TEXT,next_du
 CREATE TABLE IF NOT EXISTS workflow_runs(id TEXT PRIMARY KEY,workflow_id TEXT,trigger_slot TEXT,definition TEXT,state TEXT,job_id TEXT,result TEXT,error TEXT,created TEXT,updated TEXT,UNIQUE(workflow_id,trigger_slot));
 CREATE TABLE IF NOT EXISTS workflow_steps(run_id TEXT,step TEXT,state TEXT,result TEXT,created TEXT,PRIMARY KEY(run_id,step));
 CREATE TABLE IF NOT EXISTS workflow_notifications(id TEXT PRIMARY KEY,run_id TEXT UNIQUE,title TEXT,text TEXT,read INTEGER,created TEXT);
+CREATE TABLE IF NOT EXISTS paired_devices(id TEXT PRIMARY KEY,name TEXT,token_hash TEXT UNIQUE,state TEXT,created TEXT,expires REAL);
 CREATE TABLE IF NOT EXISTS connectors(id TEXT PRIMARY KEY,config TEXT,connected INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS connector_usage(id TEXT,day TEXT,count INTEGER,PRIMARY KEY(id,day));
 CREATE TABLE IF NOT EXISTS external_actions(id TEXT PRIMARY KEY,run_id TEXT,kind TEXT,args TEXT,state TEXT,result TEXT,created TEXT,updated TEXT);
@@ -93,7 +94,8 @@ class Store:
                     "INSERT INTO conversation_fts(rowid,content) SELECT id,content FROM conversations WHERE role='user'"
                 )
                 self.db.execute("INSERT INTO migrations VALUES(6)")
-            self.db.execute("PRAGMA user_version=6")
+            self.db.execute("INSERT OR IGNORE INTO migrations VALUES(7)")
+            self.db.execute("PRAGMA user_version=7")
             self.db.execute(
                 "UPDATE jobs SET state='interrupted', error='Application restarted; not replayed', updated=? WHERE state IN ('running','queued')",
                 (now(),),

@@ -1,0 +1,21 @@
+{
+  "seconds": 0.56,
+  "items": 5,
+  "freshness": "recent_cache",
+  "refresh_error": null,
+  "last_refresh": "2026-10-05T13:41:54.530380+00:00",
+  "sample": [
+    {
+      "title": "\u2018Defeating BJP more important\u2019: DMK, Akhilesh Yadav\u2019s UP poll message",
+      "source": "Indian Express",
+      "published": "2026-10-05T11:22:08+00:00",
+      "url": "https://indianexpress.com/article/india/uttar-pradesh-assembly-polls-congress-sp-seat-sharing-india-bloc-dmk-akhilesh-yadav-10907533/"
+    },
+    {
+      "title": "Father from Botswana, mother from India: 5 cheetah cubs at Kuno usher in new lineage",
+      "source": "Indian Express",
+      "published": "2026-10-05T11:04:58+00:00",
+      "url": "https://indianexpress.com/article/india/kuno-cheetah-cubs-botswana-father-indian-mother-new-lineage-10907572/"
+    }
+  ]
+}

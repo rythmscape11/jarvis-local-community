@@ -45,7 +45,7 @@ def test_backfills_every_existing_user_turn_without_manual_memory(tmp_path):
     s.close()
     s = Store(path)
     assert len(s.all("SELECT * FROM conversation_fts")) == 1
-    assert s.all("PRAGMA user_version")[0]["user_version"] == 6
+    assert s.all("PRAGMA user_version")[0]["user_version"] == 7
     s.close()
 
 

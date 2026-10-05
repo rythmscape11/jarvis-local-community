@@ -196,10 +196,11 @@ class LocalSpeech(Piper):
         self.phoneme_directory = None
         from .speech import GroqSpeech, MacSpeech
 
+        self.google = None
         self.online = GroqSpeech(settings)
         self.native = MacSpeech(settings)
 
-    def available(self, online_enabled=None):
+    def available(self, online_enabled=None, google_enabled=None):
         voices = super().available()
         if (MODELS / "kokoro-v1.0.onnx").exists() and (
             MODELS / "voices-v1.0.bin"
@@ -229,9 +230,21 @@ class LocalSpeech(Piper):
             from .speech import GROQ_VOICES
 
             voices += list(GROQ_VOICES)
+        if (google_enabled is not None or online_enabled is not False) and (
+            google_enabled
+            if google_enabled is not None
+            else self.settings and self.settings().google_voice_enabled
+        ):
+            from .google_ai import VOICES
+
+            voices += list(VOICES)
         return voices
 
     async def synthesize(self, text, voice):
+        if voice.startswith("gemini-"):
+            if not self.google:
+                raise ValueError("Google voice adapter unavailable")
+            return await self.google.synthesize(text, voice)
         if voice.startswith("groq-"):
             return await self.online.synthesize(text, voice)
         if voice.startswith("mac-"):
@@ -301,6 +314,10 @@ class LocalSpeech(Piper):
                 raise
 
     async def synthesize_expressive(self, text, voice, style):
+        if voice.startswith("gemini-"):
+            if not self.google:
+                raise ValueError("Google voice adapter unavailable")
+            return await self.google.synthesize(text, voice, style)
         if voice.startswith("groq-"):
             return await self.online.synthesize(text, voice, style)
         return await self.synthesize(text, voice)

@@ -1570,3 +1570,9 @@ hr {
 .owner-lock-card input { min-height: 48px; width: 100%; }
 .owner-security-panel { border-top: 1px solid var(--line, #324b3d); padding-top: 24px; display: grid; gap: 12px; }
 .owner-security-panel button { min-height: 40px; }
+.source-cards { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--line, #344638); font-size: .85rem; }
+.source-cards a { display: block; margin: .5rem 0; padding: .55rem .7rem; border: 1px solid var(--line, #344638); border-radius: .5rem; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.source-cards a:hover { border-color: #b0e2c2; }
+.source-cards a:focus-visible { outline: 2px solid #b0e2c2; outline-offset: 3px; }
+.source-cards small { display: block; margin-top: .35rem; }
+.source-meta { opacity: .85; }

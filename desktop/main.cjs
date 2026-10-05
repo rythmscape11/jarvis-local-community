@@ -237,6 +237,9 @@ app
           target.protocol === "https:" &&
           [
             "accounts.google.com",
+            "maps.apple.com",
+            "www.google.com",
+            "vertexaisearch.cloud.google.com",
             "www.bbc.com",
             "www.bbc.co.uk",
             "www.theguardian.com",
@@ -246,6 +249,9 @@ app
           || (target.protocol === "https:" && target.hostname === "github.com" && target.pathname.startsWith("/rythmscape11/jarvis-local-community/releases"))
         )
           shell.openExternal(url);
+        else if (target.protocol === "https:" && !target.username && !target.password && !["localhost", "127.0.0.1", "::1"].includes(target.hostname)) {
+          dialog.showMessageBox(window, {type:"question",buttons:["Cancel","Open source"],defaultId:0,cancelId:0,title:"Open retrieved source",message:"Open this source in your browser?",detail:target.href}).then(({response}) => {if(response === 1) shell.openExternal(target.href);});
+        }
       } catch {}
       return { action: "deny" };
     });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./automations.css";
+import { Devices } from "./Devices";
 type Template = {
   id: string;
   title: string;
@@ -201,7 +202,7 @@ export function Automations({
         role="group"
         aria-label="Automation views"
       >
-        {["workflows", "activity", "connections", "review"].map((s) => (
+        {["workflows", "activity", "connections", "devices", "review"].map((s) => (
           <button
             key={s}
             className={section === s ? "selected" : ""}
@@ -222,6 +223,7 @@ export function Automations({
         </p>
       )}
       {!snapshot && <p>Connecting to the local workflow engine…</p>}
+      {section === "devices" && <Devices />}
       {section === "workflows" && snapshot && (
         <>
           <p className="automation-caption">

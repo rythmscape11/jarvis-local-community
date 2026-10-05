@@ -1,0 +1,160 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #e0ebe4;
+  background: #101815;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  border: 1px solid #426452;
+  border-radius: 18px;
+  padding: 13px 20px;
+  background: #b9efd1;
+  color: #102319;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 48px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #b9efd1;
+  outline-offset: 4px;
+}
+input {
+  width: 100%;
+  min-width: 0;
+  background: #18251e;
+  color: inherit;
+  border: 1px solid #476150;
+  border-radius: 14px;
+  padding: 14px;
+}
+label {
+  display: grid;
+  gap: 8px;
+  margin: 22px 0;
+}
+h1 {
+  font-size: clamp(1.75rem, 7vw, 2.7rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+p {
+  line-height: 1.65;
+}
+small,
+.phone-footnote {
+  color: #adbbb2;
+}
+.phone-shell {
+  max-width: 650px;
+  margin: auto;
+  padding: max(24px, env(safe-area-inset-top)) 24px
+    max(24px, env(safe-area-inset-bottom));
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 50px;
+}
+header span {
+  letter-spacing: 0.3em;
+  font-size: 0.9rem;
+}
+.phone-voice {
+  text-align: center;
+}
+.phone-orb {
+  width: 140px;
+  height: 140px;
+  margin: 36px auto;
+  border-radius: 50%;
+  border: 1px solid #81b99a;
+  display: grid;
+  place-items: center;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 3rem;
+  box-shadow:
+    0 0 0 12px #b9efd109,
+    0 0 0 25px #b9efd104;
+}
+.phone-orb.listening,
+.phone-orb.speaking {
+  border-width: 3px;
+  box-shadow: 0 0 32px #b9efd133;
+}
+.phone-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 28px 0 18px;
+}
+.phone-controls button + button {
+  background: transparent;
+  color: inherit;
+}
+.phone-transcript {
+  margin: 28px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 38vh;
+  overflow: auto;
+  line-height: 1.7;
+}
+.phone-question {
+  color: #adbbb2;
+}
+.phone-message {
+  display: flex;
+  gap: 10px;
+  margin: 22px 0;
+}
+.phone-sr {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+details {
+  border-top: 1px solid #344539;
+  margin-top: 32px;
+  padding: 22px 0;
+}
+summary {
+  cursor: pointer;
+  min-height: 36px;
+}
+.phone-error {
+  padding: 12px;
+  border: 1px solid #bd7979;
+  border-radius: 12px;
+  color: #ffcccc;
+}
+.phone-footnote {
+  font-size: 0.85rem;
+  margin-top: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

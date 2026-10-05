@@ -1,9 +1,11 @@
 """Bounded source RSS cache. No user queries leave this computer."""
 
+import asyncio
+import time
 import hashlib
 import html
 import re
-from datetime import timezone
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import httpx
 from defusedxml import ElementTree
@@ -36,8 +38,14 @@ class News:
     def __init__(self, store, settings):
         self.store = store
         self.settings = settings
+        self.refresh_lock = asyncio.Lock()
+        self.last_attempt = 0.0
 
     async def refresh(self, cancelled=lambda: False):
+        async with self.refresh_lock:
+            return await self._refresh(cancelled)
+
+    async def _refresh(self, cancelled=lambda: False):
         if not self.settings().news_enabled:
             raise ValueError("Network news refresh is disabled")
         count = 0
@@ -61,7 +69,7 @@ class News:
                     raise ValueError("News redirect destination is not allowed")
 
         async with httpx.AsyncClient(
-            timeout=15,
+            timeout=httpx.Timeout(4, connect=2),
             trust_env=False,
             follow_redirects=True,
             max_redirects=3,
@@ -69,7 +77,8 @@ class News:
             headers={"User-Agent": "JarvisLocal/0.1 RSS reader"},
         ) as client:
             # Fixed source URLs; model/user text never controls fetch targets.
-            for feed_id, (source, url) in FEEDS.items():
+            async def fetch(feed_id, source, url):
+                nonlocal count
                 category = feed_id.split("_")[0]
                 if cancelled():
                     raise InterruptedError("News refresh cancelled")
@@ -124,6 +133,13 @@ class News:
                         count += 1
                 except Exception as error:
                     failures.append({"source": source, "error": type(error).__name__})
+
+            await asyncio.gather(
+                *(
+                    fetch(feed_id, source, url)
+                    for feed_id, (source, url) in FEEDS.items()
+                )
+            )
         if not count:
             raise ValueError(
                 "News sources unavailable; existing cached items remain usable"
@@ -144,6 +160,32 @@ class News:
             "fetched_at": now(),
             "coverage": "Selected Indian Express, BBC and Guardian RSS headlines; not exhaustive worldwide coverage",
         }
+
+    async def current(self, query="", category="all", limit=5):
+        """Refresh stale headlines on demand; failure never turns cache into live data."""
+        meta = self.store.all("SELECT value FROM news_meta WHERE key='last_refresh'")
+        try:
+            age = (
+                datetime.now(timezone.utc) - datetime.fromisoformat(meta[0]["value"])
+            ).total_seconds()
+        except (IndexError, ValueError, TypeError):
+            age = float("inf")
+        refresh_error = None
+        if (
+            self.settings().news_enabled
+            and age >= 900
+            and time.monotonic() - self.last_attempt >= 60
+        ):
+            self.last_attempt = time.monotonic()
+            try:
+                await asyncio.wait_for(self.refresh(), timeout=10)
+            except (ValueError, TimeoutError):
+                refresh_error = (
+                    "Fresh sources unavailable; showing dated cached items only"
+                )
+        result = self.search(query, category, limit)
+        result["refresh_error"] = refresh_error
+        return result
 
     def search(self, query="", category="all", limit=10):
         # Recency words describe ordering, not a term required in every headline.
@@ -173,8 +215,38 @@ class News:
                 (category, category, limit),
             )
         meta = self.store.all("SELECT value FROM news_meta WHERE key='last_refresh'")
+        try:
+            age = max(
+                0,
+                (
+                    datetime.now(timezone.utc)
+                    - datetime.fromisoformat(meta[0]["value"])
+                ).total_seconds(),
+            )
+        except (IndexError, ValueError, TypeError):
+            age = None
+        item_ages = []
+        for row in rows:
+            try:
+                item_ages.append(
+                    max(
+                        0,
+                        (
+                            datetime.now(timezone.utc)
+                            - datetime.fromisoformat(row["fetched"])
+                        ).total_seconds(),
+                    )
+                )
+            except (ValueError, TypeError):
+                item_ages.append(float("inf"))
+        recent_items = bool(item_ages) and max(item_ages) < 900
         return {
             "items": rows,
+            "cache_age_seconds": round(age) if age is not None else None,
+            "freshness": "recent_cache"
+            if recent_items and self.settings().news_enabled
+            else "stale_or_offline_cache",
+            "retrieved": now(),
             "last_refresh": meta[0]["value"] if meta else None,
             "network_enabled": self.settings().news_enabled,
             "priority": getattr(self.settings(), "news_priority", "india"),

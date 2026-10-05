@@ -27,6 +27,12 @@ class Settings(BaseModel):
     timezone: str = "Asia/Kolkata"
     voice: str = "kokoro-af_heart"
     voice_pace: float = Field(default=1.0, ge=0.8, le=1.4)
+    google_voice_enabled: bool = False
+    google_search_enabled: bool = False
+    google_tts_model: str = Field(
+        default="gemini-3.8-flash-lite-tts",
+        pattern=r"^gemini-(?:3\.8-flash(?:-lite)?-tts|3\.1-flash-tts-preview)$",
+    )
     online_voice_enabled: bool = False
     online_voice_fallback: str = "none"
     groq_voice_rpm: int = Field(default=10, ge=1, le=60)

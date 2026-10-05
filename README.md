@@ -164,3 +164,7 @@ The app checks the fixed public release feed daily, displays a notice for newer 
 ## Optional owner protection
 
 Explicit enrollment combines a local encrypted voiceprint with a passphrase lease. Unknown voices stay locked. This experimental feature is off until enrollment; replay is a known limitation. See [model download, enrollment, tests, deletion and recovery](docs/OWNER_VOICE_SECURITY.md).
+
+## Current sources and private phone companion
+
+Version 0.3 adds fresh-source retrieval for current questions, opt-in Google cited search and voices, meeting availability/invitations/Meet and reviewed cancellation, navigation handoff links, appointment call briefs, and a private paired phone web companion. These are bounded connectors, not unrestricted autonomous control. See [live information and privacy](docs/LIVE_DATA.md) and [device setup and remaining prerequisites](docs/DAILY_GUIDE_AND_DEVICES.md). Google account access and iPhone hardware tests are separate from mocked contract tests.

@@ -1,0 +1,19 @@
+{
+  "os": "macOS-27.0.1-arm64-arm-64bit",
+  "runtime": "jarvis-runtime",
+  "inference_tested": false,
+  "microphone_tested": false,
+  "installer_ui_tested": false,
+  "document_formats": [
+    "docx",
+    "pdf",
+    "md",
+    "csv",
+    "xlsx",
+    "pptx"
+  ],
+  "workflow_id": "832ae5c0-a20c-4058-bc17-2e214f552f84",
+  "workflow_persistence": true,
+  "restart_persistence": true,
+  "memory_deletion": true
+}

@@ -262,7 +262,7 @@ class Connectors:
         self.store.run("DELETE FROM connectors WHERE id=?", (profile,))
         if profile == "calendar_write":
             self.store.run(
-                "UPDATE external_actions SET state='rejected' WHERE state='pending' AND kind IN ('create_calendar_event','update_calendar_event')"
+                "UPDATE external_actions SET state='rejected' WHERE state='pending' AND kind IN ('create_calendar_event','update_calendar_event','cancel_calendar_event')"
             )
         self.store.run(
             "UPDATE external_actions SET state='rejected' WHERE state='pending' AND kind=?",
@@ -322,6 +322,7 @@ class Connectors:
         return result["access_token"]
 
     async def request(self, profile, method, path, **kwargs):
+        allow_not_found = kwargs.pop("allow_not_found", False)
         self.budget(profile)
         token = await self.token(profile)
         async with httpx.AsyncClient(
@@ -337,6 +338,10 @@ class Connectors:
                 **kwargs,
             ) as response:
                 # Never echo service error bodies containing private data or credentials.
+                if allow_not_found and response.status_code in {404, 410}:
+                    return {"not_found": True}
+                if response.status_code == 204:
+                    return {}
                 if response.status_code >= 500:
                     raise InterruptedError(
                         "Service failed; write may have taken effect. Inspect account before retry."
@@ -671,7 +676,11 @@ class Connectors:
             from .phone import perform
 
             return await perform(self, args)
-        if kind in {"create_calendar_event", "update_calendar_event"}:
+        if kind in {
+            "create_calendar_event",
+            "update_calendar_event",
+            "cancel_calendar_event",
+        }:
             from .calendar_actions import perform
 
             return await perform(self, kind, args)
