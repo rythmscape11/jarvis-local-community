@@ -1561,3 +1561,12 @@ hr {
 .software-update a { color: #caf4d9; }
 .software-update button { padding: 4px; background: transparent; border: 0; }
 .update-settings { padding: 18px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 24px; }
+/* Owner gate removes the conversation tree while locked. */
+.owner-lock-screen { min-height: 100dvh; display: grid; place-items: center; padding: 32px; background: #0c1713; }
+.owner-lock-card { width: min(100%, 480px); display: grid; gap: 20px; }
+.owner-lock-card h1 { font-size: clamp(28px, 4vw, 40px); margin: 0; }
+.owner-lock-card p { line-height: 1.6; }
+.owner-lock-card form, .owner-lock-card label { display: grid; gap: 16px; }
+.owner-lock-card input { min-height: 48px; width: 100%; }
+.owner-security-panel { border-top: 1px solid var(--line, #324b3d); padding-top: 24px; display: grid; gap: 12px; }
+.owner-security-panel button { min-height: 40px; }

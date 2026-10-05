@@ -47,7 +47,14 @@ def main():
     args.add_argument("--no-browser", action="store_true")
     args.add_argument("--serve", action="store_true")
     args.add_argument("--download-models", action="store_true")
+    args.add_argument("--download-owner-model", action="store_true")
     options = args.parse_args()
+    if options.download_owner_model:
+        from jarvis import config
+        from jarvis.owner import download_model
+
+        download_model(config.MODELS)
+        return
     if options.download_models:
         from jarvis import config
 

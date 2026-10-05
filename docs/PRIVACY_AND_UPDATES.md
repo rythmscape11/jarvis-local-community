@@ -8,7 +8,7 @@ Chats are automatically saved locally and relevant **past user messages** can in
 
 ## Shared computers
 
-One signed-in OS account has one Jarvis workspace. Different people using that same unlocked account share its records. Use separate password-protected OS accounts for private workspaces. Jarvis has no speaker authentication or verified voice identification. Do not leave an owner-authorized microphone session open for guests or children with access to connected services. Family-friendly mode changes responses; it is not an access-control boundary.
+One signed-in OS account has one Jarvis workspace. Different people using that same unlocked account share its records. Use separate password-protected OS accounts for private workspaces. Optional experimental owner protection combines an encrypted local voiceprint with a passphrase, and locks unknown voices. It is off until explicit enrollment and is not anti-spoofing. See [setup, limitations and recovery](OWNER_VOICE_SECURITY.md). Do not leave an owner-authorized microphone session open for guests or children with access to connected services. Family-friendly mode changes responses; it is not an access-control boundary.
 
 ## Optional network use
 

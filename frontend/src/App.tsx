@@ -26,6 +26,7 @@ import { Microphone, Player, PlaybackInterruption, pcmBase64 } from "./audio";
 import { Visualizer } from "./Visualizer";
 import { Automations } from "./Automations";
 import { responseError } from "./http";
+import { OwnerSecurityPanel } from "./OwnerSecurity";
 
 type State =
   | "idle"
@@ -510,6 +511,12 @@ export default function App() {
     };
     ws.current.onmessage = (event) => {
       const message = JSON.parse(event.data);
+      if (message.type === "owner_locked") {
+        player.current.stop();
+        void stopMic();
+        window.dispatchEvent(new Event("jarvis-owner-locked"));
+        return;
+      }
       if (message.type === "hello") {
         if (session.current && session.current !== message.session_id) return;
         session.current = message.session_id;
@@ -652,7 +659,8 @@ export default function App() {
         notify(message.message);
       }
     };
-    ws.current.onclose = () => {
+    ws.current.onclose = (event) => {
+      if (event.code === 4003) window.dispatchEvent(new Event("jarvis-owner-locked"));
       if (wakeTimer.current) clearTimeout(wakeTimer.current);
       wakeAwaiting.current = false;
       setWakeActive(false);
@@ -680,6 +688,8 @@ export default function App() {
   }
   useEffect(() => {
     disposed.current = false;
+    const pauseOwnerEnrollment = () => stop();
+    window.addEventListener("jarvis-pause", pauseOwnerEnrollment);
     const unbindFullscreen = window.jarvisDesktop?.onFullscreen?.(setExpanded);
     player.current.onDrained = () => {
       if (!interruption.current.drained()) return;
@@ -783,6 +793,7 @@ export default function App() {
       clearInterval(poll);
       if (wakeTimer.current) clearTimeout(wakeTimer.current);
       if (reconnect.current) clearTimeout(reconnect.current);
+      window.removeEventListener("jarvis-pause", pauseOwnerEnrollment);
       ws.current?.close();
       player.current.stop();
       void stopMic();
@@ -2220,6 +2231,7 @@ export default function App() {
                   <button type="button" onClick={() => void safe(async () => {setSoftwareUpdate(await api<NonNullable<typeof softwareUpdate>>("/updates/check", "POST"));})}>Check now</button>
                   <p className="setting-note">{softwareUpdate?.status === "up_to_date" ? "You have the current release." : softwareUpdate?.status === "unavailable" ? "Update check unavailable. Your installed software keeps working." : softwareUpdate?.status === "no_release" ? "No public release is available yet." : softwareUpdate?.status === "disabled" ? "Automatic checks disabled." : softwareUpdate?.available ? `Version ${softwareUpdate.latest_version} is available.` : "Check public releases without changing your installation."}</p>
                 </section>
+                <OwnerSecurityPanel />
                 <label className="check-label">
                   <input type="checkbox" checked={config.conversation_recall ?? true} onChange={(e) => setConfig({...config, conversation_recall: e.target.checked})} />
                   Automatically recall saved conversations

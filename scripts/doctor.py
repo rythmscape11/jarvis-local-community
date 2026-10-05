@@ -67,7 +67,7 @@ def main():
         "Kokoro voices",
         (config.MODELS / "kokoro-v1.0.onnx").exists()
         and (config.MODELS / "voices-v1.0.bin").exists(),
-        "8 selectable local English voices",
+        "14 selectable local English voices",
     )
     if sys.platform == "darwin":
         check(
@@ -79,6 +79,22 @@ def main():
         check("Silero ONNX", True, Silero().probability(bytes(1024)))
     except Exception as error:
         check("Silero ONNX", False, str(error))
+    from jarvis.owner import MODEL, MODEL_SHA256
+    import hashlib
+
+    owner_model = config.MODELS / MODEL
+    owner_ok = (
+        owner_model.is_file()
+        and hashlib.sha256(owner_model.read_bytes()).hexdigest() == MODEL_SHA256
+    )
+    print(
+        "INFO Optional owner model: "
+        + (
+            "checksum verified; enrollment still required"
+            if owner_ok
+            else "not installed; core works without enrollment"
+        )
+    )
     import asyncio
     from jarvis.engines import Ollama, Whisper
 

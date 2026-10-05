@@ -9,6 +9,7 @@ from collections import deque
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -31,6 +32,7 @@ from .agent import Agent, round_ms
 from .providers import ModelRouter, credential_name
 from .credentials import credentials
 from .updates import Updates
+from .owner import OwnerLock, Speaker
 from .calendar import Calendar
 from .control import Control
 from .news import News
@@ -106,6 +108,15 @@ secret_file.chmod(0o600)
 secret = secret_file.read_text().strip()
 sessions = {}
 connections = set()
+owner = OwnerLock(config.DATA, Speaker(config.MODELS))
+
+
+async def lock_owner_connections():
+    owner.lock()
+    for socket in list(connections):
+        with contextlib.suppress(Exception):
+            await socket.send_json({"type": "owner_locked"})
+            await socket.close(code=4003)
 
 
 @asynccontextmanager
@@ -187,6 +198,64 @@ app.add_middleware(
 )
 
 
+class OwnerPassword(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class OwnerEnrollment(OwnerPassword):
+    samples: list[Annotated[str, Field(max_length=700000)]] = Field(
+        min_length=4, max_length=4
+    )
+
+
+@app.get("/api/owner/status")
+async def owner_status(request: Request):
+    return owner.status(request.cookies.get("jarvis_session", ""))
+
+
+@app.post("/api/owner/unlock")
+async def owner_unlock(request: Request, body: OwnerPassword):
+    try:
+        await owner.unlock(request.cookies.get("jarvis_session", ""), body.password)
+    except ValueError as error:
+        raise HTTPException(403, str(error)) from error
+    return owner.status(request.cookies.get("jarvis_session", ""))
+
+
+@app.post("/api/owner/enroll")
+async def owner_enroll(request: Request, body: OwnerEnrollment):
+    try:
+        samples = [base64.b64decode(value, validate=True) for value in body.samples]
+        await owner.enroll(
+            request.cookies.get("jarvis_session", ""), body.password, samples
+        )
+    except Exception as error:
+        # Never expose samples, embeddings or passphrases through exception text.
+        raise HTTPException(
+            400,
+            "Enrollment failed. Use four 4–16 second recordings of the same voice and check the downloaded model",
+        ) from error
+    await lock_owner_connections()
+    return owner.status(request.cookies.get("jarvis_session", ""))
+
+
+@app.post("/api/owner/lock")
+async def owner_lock_now():
+    await lock_owner_connections()
+    return {"locked": True}
+
+
+@app.post("/api/owner/remove")
+async def owner_remove(request: Request, body: OwnerPassword):
+    try:
+        await owner.remove(request.cookies.get("jarvis_session", ""), body.password)
+    except ValueError as error:
+        raise HTTPException(403, str(error)) from error
+    await lock_owner_connections()
+    return {"enabled": False, "locked": False}
+
+
 @app.middleware("http")
 async def local_security(request: Request, call_next):
     origin = request.headers.get("origin")
@@ -214,6 +283,17 @@ async def local_security(request: Request, call_next):
             )
     if request.method not in {"GET", "HEAD"} and origin != config.ORIGIN:
         return Response("An exact local Origin is required", status_code=403)
+    owner_public = {
+        "/api/ready",
+        "/api/session",
+        "/api/owner/status",
+        "/api/owner/unlock",
+    }
+    if request.url.path.startswith("/api/") and request.url.path not in owner_public:
+        if not owner.allowed(request.cookies.get("jarvis_session", "")):
+            return Response(
+                "Owner locked. Enter your owner passphrase in Jarvis", status_code=423
+            )
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -683,10 +763,12 @@ class Capture:
 
 @app.websocket("/ws")
 async def websocket(ws: WebSocket):
+    owner_token = ws.cookies.get("jarvis_session", "")
     if (
         ws.headers.get("origin") != config.ORIGIN
         or sessions.get(ws.cookies.get("jarvis_session", ""), 0) < time.time()
         or len(connections) >= 4
+        or not owner.allowed(owner_token)
     ):
         await ws.close(code=1008)
         return
@@ -708,6 +790,9 @@ async def websocket(ws: WebSocket):
 
     async def send(event, turn=None, **payload):
         nonlocal speaking, assistant_text
+        if not owner.allowed(owner_token):
+            await ws.close(code=4003)
+            raise asyncio.CancelledError
         if turn == current and event == "state" and payload.get("state") == "speaking":
             speaking = True
         if turn == current and event == "delta":
@@ -769,6 +854,11 @@ async def websocket(ws: WebSocket):
                     wake_active_until = 0
                     await emit("stop_detected")
                     await emit("done", text="", audio_count=0, metrics=timings)
+                    return
+                if not await owner.verify(owner_token, pcm):
+                    await lock_owner_connections()
+                    return
+                if turn != current:
                     return
                 if capture_mode == "wake":
                     import re
@@ -858,6 +948,9 @@ async def websocket(ws: WebSocket):
                 barge_capture = None
                 await send("barge_rejected", turn, reason="requires_wake_or_stop")
                 return
+            if not stopped and not await owner.verify(owner_token, pcm):
+                await lock_owner_connections()
+                return
             await cancel()
             new_turn = uid()
             current = new_turn
@@ -884,6 +977,9 @@ async def websocket(ws: WebSocket):
     try:
         while True:
             raw = await ws.receive_text()
+            if not owner.allowed(owner_token):
+                await ws.close(code=4003)
+                break
             if len(raw) > 32_000:
                 raise ValueError("Message exceeds 32 KB")
             stamp = time.monotonic()

@@ -160,3 +160,7 @@ Groq HTTP 429 responses are rate limits, not proof that your entire account quot
 ## Software updates and privacy
 
 The app checks the fixed public release feed daily, displays a notice for newer versions and provides an owner-reviewed download link. Disable checks for offline use. No silent installation or cross-user memory syncing occurs. Each installation uses its own OS credential store and local records; people sharing an unlocked OS account share one workspace. [Details and release procedure](docs/PRIVACY_AND_UPDATES.md).
+
+## Optional owner protection
+
+Explicit enrollment combines a local encrypted voiceprint with a passphrase lease. Unknown voices stay locked. This experimental feature is off until enrollment; replay is a known limitation. See [model download, enrollment, tests, deletion and recovery](docs/OWNER_VOICE_SECURITY.md).

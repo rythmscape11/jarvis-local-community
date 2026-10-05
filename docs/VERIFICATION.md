@@ -16,3 +16,7 @@ Synthetic PCM tested the installed Silero → Whisper → hosted model → local
 6. Deny/re-enable microphone permission, disconnect/reconnect an audio device, and stop a model service. Verify clear error states and working text input.
 
 Unsigned preview: Developer ID signing/notarization, physical acoustic checks, iPhone linking/call handoff, actual Calendar modification and Windows installer/audio verification remain release prerequisites. Update notification logic is verified with simulated newer releases; future signed automatic installation is not implemented.
+
+## Owner protection
+
+Experimental local speaker embedding extraction, encrypted enrollment and passphrase gates are implemented. Deterministic security tests cover encrypted restart/delete, expiry, wrong passwords, unknown speakers, enrollment races and API/WebSocket refusal. Real local-model fixture tests accepted a held-out same-speaker recording and rejected a different-speaker recording; replay was accepted. See OWNER_VOICE_SECURITY.md for measurements and limits. Owner microphone enrollment and false-accept/false-reject rates are not verified.
