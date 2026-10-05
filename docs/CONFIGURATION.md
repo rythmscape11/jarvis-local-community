@@ -56,7 +56,7 @@ Unsigned macOS updates may require reapproving Jarvis runtime access to its save
 
 ## Current sources and companion
 
-`google_search_enabled=false`, `google_voice_enabled=false` and `google_tts_model=gemini-3.8-flash-lite-tts` are saved settings. The per-user Gemini key is stored in keyring under the fixed Google-compatible endpoint. Each feature is separately enabled; enabling Google does not enable Groq. Local fallback enumeration excludes both remote adapters. Read [LIVE_DATA.md](LIVE_DATA.md) before enabling provider data transmission.
+`google_search_enabled=false`, `google_search_model=gemini-3.1-flash-lite`, `google_voice_enabled=false` and `google_tts_model=gemini-3.8-flash-lite-tts` are saved settings. The per-user Gemini key is stored in keyring under the fixed Google-compatible endpoint. Each feature is separately enabled; enabling Google does not enable Groq. Local fallback enumeration excludes both remote adapters. Read [LIVE_DATA.md](LIVE_DATA.md) before enabling provider data transmission.
 
 Migration 7 adds hashed, expiring paired-device records. `companion.json` is private runtime configuration, excluded from Git. The gateway binds to 127.0.0.1:8770, disabled to remote clients by default. `JARVIS_COMPANION_SERVER=0` disables gateway startup (useful in isolated tests). Private Tailscale HTTPS and exact desktop approval are required for phone access; see [setup](DAILY_GUIDE_AND_DEVICES.md).
 

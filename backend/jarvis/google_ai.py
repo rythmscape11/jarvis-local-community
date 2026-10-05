@@ -146,7 +146,7 @@ class GoogleAI:
         )
         result = await self.request(
             {
-                "model": "gemini-2.5-flash-lite",
+                "model": self.settings().google_search_model,
                 "input": priority + "Find current factual reporting about: " + query,
                 "system_instruction": "Use Google Search. Give up to three concise findings, distinguish reported facts from analysis, include publication dates where available. Public research only; no private account access.",
                 "tools": [{"type": "google_search"}],

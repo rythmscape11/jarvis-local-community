@@ -60,6 +60,7 @@ type Config = {
   voice_pace: number;
   google_voice_enabled: boolean;
   google_search_enabled: boolean;
+  google_search_model: string;
   google_tts_model: string;
   online_voice_enabled: boolean;
   online_voice_fallback: string;
@@ -2207,6 +2208,7 @@ export default function App() {
                   <h3>Live information</h3>
                   <p className="setting-note">Model training has a cutoff. Jarvis checks sources before answering current questions, and displays publication dates and retrieval times. Conversation memory provides your context; it does not update model weights.</p>
                   <label className="check-label"><input type="checkbox" checked={config.google_search_enabled ?? false} onChange={e => setConfig({...config, google_search_enabled: e.target.checked})} />Enable Google cited search for current public questions</label>
+                  {config.google_search_enabled && <label>Google search model<select value={config.google_search_model || "gemini-3.1-flash-lite"} onChange={e => setConfig({...config, google_search_model:e.target.value})}><option>gemini-3.1-flash-lite</option><option>gemini-2.5-flash-lite</option><option>gemini-3.8-flash</option></select><small>Available models and quotas vary by account. A failed lookup never switches providers silently.</small></label>}
                   <p className="setting-note">Uses your own Gemini key saved under the Google provider preset. Sends the current public topic, without saved conversation excerpts. Requires internet. Limited to 10 attempts per UTC day. Provider quotas and pricing apply; free-tier data may be used by Google to improve products. No billing is enabled by Jarvis.</p>
                   <label className="check-label"><input type="checkbox" checked={config.google_voice_enabled ?? false} onChange={e => setConfig({...config, google_voice_enabled:e.target.checked,voice: !e.target.checked && config.voice.startsWith("gemini-") ? "kokoro-af_heart" : config.voice})}/>Enable optional Google voices</label>
                   <p className="setting-note">Sends the spoken reply to Google. Limited to 20 synthesis attempts per UTC day; longer replies may need several attempts. Local Heart remains available offline. Account/model access must be verified.</p>

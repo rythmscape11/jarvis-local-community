@@ -1,0 +1,24 @@
+{
+  "google_search": {
+    "ok": false,
+    "citations": 0,
+    "elapsed_seconds": 4.63,
+    "error": "Google temporarily rate-limited this request; account limits and Jarvis caps are separate",
+    "model": "gemini-3.1-flash-lite"
+  },
+  "account_tier_observed": "Free tier in Google AI Studio, 5 October 2026",
+  "billing_changed": false,
+  "prior_search_model_result": {
+    "model": "gemini-2.5-flash-lite",
+    "http_status": 404
+  },
+  "google_voice": {
+    "ok": true,
+    "http_status": 200,
+    "model": "gemini-3.8-flash-lite-tts",
+    "voice": "Kore",
+    "elapsed_seconds": 5.07,
+    "duration_seconds": 10.24
+  },
+  "measurements_are_separate_requests": true
+}

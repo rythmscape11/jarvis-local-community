@@ -29,6 +29,10 @@ class Settings(BaseModel):
     voice_pace: float = Field(default=1.0, ge=0.8, le=1.4)
     google_voice_enabled: bool = False
     google_search_enabled: bool = False
+    google_search_model: str = Field(
+        default="gemini-3.1-flash-lite",
+        pattern=r"^gemini-(?:2\.5-flash-lite|3\.1-flash-lite|3\.8-flash)$",
+    )
     google_tts_model: str = Field(
         default="gemini-3.8-flash-lite-tts",
         pattern=r"^gemini-(?:3\.8-flash(?:-lite)?-tts|3\.1-flash-tts-preview)$",

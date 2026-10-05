@@ -158,6 +158,7 @@ async def test_google_rest_citations_header_key_no_history_or_retained_interacti
             "key=" not in str(r.url)
             and r.headers["x-goog-api-key"] == "fixture-not-a-real-key"
         )
+        assert body["model"] == cfg.google_search_model
         assert body["store"] is False and body["tools"] == [{"type": "google_search"}]
         assert "Fixture public topic" in body["input"]
         return httpx.Response(
