@@ -2,7 +2,7 @@
 
 A working local personal voice assistant: React/TypeScript dashboard, native Ollama, Metal-accelerated whisper.cpp, Silero ONNX voice activity detection, local Kokoro voices with maintained Piper fallback, FastAPI/WebSocket, and SQLite/FTS5. The offline assistant does not require a paid API, subscription or cloud inference. Optional model APIs, expressive Groq voices, optional Google Calendar and news feeds use internet only when enabled/configured.
 
-The verified development target is Apple M5 MacBook Pro, 24 GB unified memory, macOS 27.0.1. Source and Windows build scripts are included; Windows runtime, installer, permissions and audio remain unverified. This is a development release, not a claim of universal hardware support or readiness for commercial sale.
+The verified development target is Apple M5 MacBook Pro, 24 GB unified memory, macOS 27.0.1. The Windows x64 development installer was built in Windows CI and its frozen backend passed isolated persistence checks. Physical Windows installation, permissions and audio remain unverified. This is a development release, not a claim of universal hardware support or readiness for commercial sale.
 
 ## Download
 
@@ -17,7 +17,7 @@ OLLAMA_HOST=127.0.0.1:11437 OLLAMA_NO_CLOUD=1 ollama serve
 OLLAMA_HOST=127.0.0.1:11437 ollama pull qwen3:4b-instruct
 ```
 
-Then open Jarvis Local from Applications. The archive is a development build, without Apple Developer ID signing/notarization. macOS may prevent launch; do not disable system protections. Use the source setup below or wait for a signed release if your system blocks the preview. Windows source/build instructions are included; no verified Windows installer is claimed.
+Then open Jarvis Local from Applications. The archive is a development build, without Apple Developer ID signing/notarization. macOS may prevent launch; do not disable system protections. Use the source setup below or wait for a signed release if your system blocks the preview. The unsigned Windows x64 development installer is also available in v0.3.1. Its CI build and frozen-runtime tests passed; see the Windows steps below. Physical installation and audio remain unverified.
 
 Each person configures their own optional API keys and Google connections in Settings. No developer account, shared API, personal database or memory is supplied. See [privacy, OS-user isolation and update behaviour](docs/PRIVACY_AND_UPDATES.md).
 
@@ -87,6 +87,8 @@ powershell -ExecutionPolicy Bypass -File start.ps1
 powershell -ExecutionPolicy Bypass -File scripts/package-windows.ps1
 ```
 
+The prebuilt unsigned x64 development installer is in [v0.3.1 downloads](https://github.com/rythmscape11/jarvis-local-community/releases/tag/v0.3.1). Install native Ollama separately, download the local models through the bundled runtime or source setup, and configure your own optional credentials. Windows may block an unsigned preview; do not disable system protections. Physical installer/audio checks remain pending.
+
 This emits an NSIS installer on Windows. The Windows target is x64, with CPU whisper.cpp by default. The Mac binary cannot be used on Windows. Windows bundle paths use explicitly configured absolute .exe names in JARVIS_APPLICATIONS; the shipped example uses Mac identifiers. Adjust that allowlist before enabling Windows application actions. Windows ARM and Intel Mac compatibility are not established by these scripts.
 
 ## Using Jarvis
@@ -147,7 +149,7 @@ Native Indian voices use Apple's installed voice assets through a reusable helpe
 
 Keychain prompts: use your Mac login password in the macOS dialog and choose Always Allow for the Jarvis credential when offered. Model and online speech share a single endpoint-scoped read, reuse an approved key only in process memory, and never write it to logs or ordinary files. Denial is remembered for the current process to prevent prompt loops; Settings → Test API connection explicitly retries. Changing/removing a key invalidates the cached read. An unsigned update may still require new OS approval. Do not reset the entire Keychain to troubleshoot this app. [Apple guidance](https://support.apple.com/guide/keychain-access/kyca1243/mac).
 
-Windows verification: `.github/workflows/windows.yml` is a manual, bounded Windows 2025 build job. It installs pinned dependencies, builds native Whisper, runs regression checks, creates an unsigned NSIS installer and exercises the actual frozen backend with disposable records. It does not establish microphone, installer UI, voice inference, login startup, Windows ACL privacy or Windows signing. Run it from the private repository Actions page after checking the account’s included Actions minutes/budget; no paid capacity or automatic trigger is enabled.
+Windows verification: `.github/workflows/windows.yml` is a manual, bounded Windows 2025 build job. It installs pinned dependencies, builds native Whisper, runs regression checks, creates an unsigned NSIS installer and exercises the actual frozen backend with disposable records. It does not establish microphone, installer UI, voice inference, login startup, Windows ACL privacy or Windows signing. The v0.3.1 public Windows CI run passed 192 backend tests, 13 frontend tests, installer packaging and isolated frozen-runtime restart/deletion checks. See [Windows verification](docs/windows-0.3.1-runtime-smoke.json). No paid capacity or automatic trigger is enabled.
 
 ## Local workflows and optional Google connections
 

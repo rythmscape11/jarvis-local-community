@@ -1,0 +1,30 @@
+{
+  "os": "Windows-10-10.0.26100-SP0",
+  "runtime": "jarvis-runtime.exe",
+  "inference_tested": false,
+  "microphone_tested": false,
+  "installer_ui_tested": false,
+  "document_formats": [
+    "docx",
+    "pdf",
+    "md",
+    "csv",
+    "xlsx",
+    "pptx"
+  ],
+  "workflow_id": "b5f8a497-e993-42e7-bf35-479ebf83236e",
+  "workflow_persistence": true,
+  "restart_persistence": true,
+  "memory_deletion": true,
+  "version": "0.3.1",
+  "source_commit": "54aad4d1e22468ba18a226a112433054c58801d0",
+  "ci_run": "https://github.com/rythmscape11/jarvis-local-community/actions/runs/37341774440",
+  "backend_tests_passed": 192,
+  "frontend_tests_passed": 13,
+  "installer_file": "Jarvis-Local-0.3.1-windows-x64.exe",
+  "installer_bytes": 260489577,
+  "installer_sha256": "ecd4a104dc53181fe10aa796c0ed042d112cc317ca264a15f8f382480479b2fa",
+  "signed": false,
+  "windows_account_acl_tested": false,
+  "login_startup_tested": false
+}
