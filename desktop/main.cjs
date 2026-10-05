@@ -12,6 +12,7 @@ const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const http = require("node:http");
+const { authenticate } = require("./local-session.cjs");
 let owned = null,
   window = null,
   quitting = false;
@@ -251,7 +252,9 @@ app
     window.webContents.on("will-navigate", (event, url) => {
       if (!local(url)) event.preventDefault();
     });
-    window.loadURL(origin + "/#token=" + encodeURIComponent(token));
+    const sessionToken = await authenticate(token, origin);
+    await session.defaultSession.cookies.set({url:origin,name:"jarvis_session",value:sessionToken,httpOnly:true,sameSite:"strict",path:"/",expirationDate:Date.now()/1000 + 12*3600});
+    window.loadURL(origin);
     app.on("activate", () => {
       window?.show();
     });

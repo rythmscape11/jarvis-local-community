@@ -10,7 +10,8 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist:mac": "electron-builder --mac dir --arm64",
-    "dist:win": "electron-builder --win nsis --x64"
+    "dist:win": "electron-builder --win nsis --x64",
+    "test": "node --test local-session.test.cjs"
   },
   "devDependencies": {
     "electron": "44.5.1",
@@ -25,7 +26,8 @@
     "files": [
       "main.cjs",
       "preload.cjs",
-      "package.json"
+      "package.json",
+      "local-session.cjs"
     ],
     "extraResources": [
       {
