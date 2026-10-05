@@ -1,4 +1,5 @@
 import json
+import os
 from jarvis.calendar import Calendar
 from jarvis.news import News
 from jarvis.store import Store
@@ -59,4 +60,6 @@ def test_calendar_prerequisite_and_safe_import(tmp_path, monkeypatch):
     assert connector.configured()
     assert "irrelevant" not in connector.client()
     assert "code_challenge=" in connector.begin()
-    assert (tmp_path / "calendar-client.json").stat().st_mode & 0o777 == 0o600
+    # Windows reports synthetic mode bits; NTFS access uses profile ACLs.
+    if os.name != "nt":
+        assert (tmp_path / "calendar-client.json").stat().st_mode & 0o777 == 0o600

@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import json
+import os
 import time
 from pathlib import Path
 import numpy as np
@@ -34,7 +35,9 @@ async def test_enrollment_encrypted_restart_password_and_unknown_lock(tmp_path):
         "prints" not in persisted
         and "isolated-test-passphrase" not in owner.path.read_text()
     )
-    assert owner.path.stat().st_mode & 0o777 == 0o600
+    # Windows reports synthetic mode bits; NTFS access uses profile ACLs.
+    if os.name != "nt":
+        assert owner.path.stat().st_mode & 0o777 == 0o600
     restarted = OwnerLock(tmp_path, FakeSpeaker())
     assert not restarted.allowed("owner")
     with pytest.raises(ValueError):

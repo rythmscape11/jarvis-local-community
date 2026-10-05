@@ -1,0 +1,19 @@
+{
+  "installed_version": "0.3.1",
+  "provider": "Gemini",
+  "model": "gemini-3.1-flash-lite",
+  "voice": "gemini-Aoede",
+  "automatic_recall": true,
+  "probe_sends_owner_history": false,
+  "probe_http_status": 200,
+  "probe": {
+    "ok": true,
+    "model": "gemini-3.1-flash-lite",
+    "ttft_ms": 7279.0,
+    "total_ms": 7280.4
+  },
+  "elapsed_seconds": 7.29,
+  "physical_microphone_tested": false,
+  "backend_regression_tests_passed": 192,
+  "bundled_timezone_smoke_passed": true
+}

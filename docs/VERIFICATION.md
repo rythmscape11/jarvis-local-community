@@ -39,3 +39,7 @@ Google account voice synthesis passed: Gemini 3.8 Flash-Lite TTS, Kore, HTTP 200
 Gemini/compatible-provider server failures receive one cancellable retry only before output, followed by a sanitized provider-unavailable message. HTTP 429/auth/model errors and partial-stream disconnects are not retried; no provider is switched automatically. Isolated tests cover bounded attempts, cancellation and no partial-output replay. Google's own service availability is outside the application.
 
 The first Windows CI run timed out. Its log identified missing `tzdata` and `ZoneInfoNotFoundError: Asia/Kolkata`. The pinned first-party timezone package is now included in source dependencies and both frozen runtime packaging commands. A subprocess test forces an empty OS timezone path and verifies the actual +05:30 conversion. Windows CI must pass independently before any installer is reported verified.
+
+The corrected Windows rerun completed all backend cases in 41 seconds: 190 passed and two POSIX-only mode-bit assertions failed. Those assertions now run only on POSIX; the corresponding OAuth/encryption/restart tests still execute on Windows. This does not establish Windows ACL isolation or hardware behavior; those require a real Windows account/device check.
+
+After the owner approved Keychain access, the installed 0.3.1 Gemini synthetic greeting passed (HTTP 200), with 7279.0 ms first-token time and 7280.4 ms total. It sent no owner history and did not change billing. The selected model and Aoede voice were preserved.
