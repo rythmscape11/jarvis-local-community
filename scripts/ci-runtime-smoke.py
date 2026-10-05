@@ -42,6 +42,7 @@ def main():
             "JARVIS_PORT": str(port),
             "JARVIS_WARMUP": "0",
             "JARVIS_NEWS_SCHEDULER": "0",
+            "PYTHONTZPATH": "",
         }
         for restart in (False, True):
             with (data / "runtime.log").open("w") as log:

@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import httpx
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 REPOSITORY = "rythmscape11/jarvis-local-community"
 RELEASES = "https://github.com/" + REPOSITORY + "/releases"
 API = "https://api.github.com/repos/" + REPOSITORY + "/releases/latest"

@@ -104,7 +104,7 @@ async def test_model_service_error_is_not_a_success(monkeypatch):
     adapter.client = httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(503))
     )
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(ValueError, match="temporarily unavailable"):
         async for event in adapter.stream(
             [{"role": "user", "content": "hello"}], [], settings
         ):

@@ -2251,7 +2251,7 @@ export default function App() {
                   </label>
                 )}
                 <section className="update-settings">
-                  <h3>Software updates · {softwareUpdate?.current_version || "0.3.0"}</h3>
+                  <h3>Software updates · {softwareUpdate?.current_version || "0.3.1"}</h3>
                   <label className="check-label"><input type="checkbox" checked={config.update_checks ?? true} onChange={(e) => setConfig({...config,update_checks:e.target.checked})}/> Check for new releases daily</label>
                   <p className="setting-note">Only public release metadata is requested from GitHub. No chats, memory, credentials or device identifier are sent. Updates require your review; automatic installation is not enabled.</p>
                   <button type="button" onClick={() => void safe(async () => {setSoftwareUpdate(await api<NonNullable<typeof softwareUpdate>>("/updates/check", "POST"));})}>Check now</button>

@@ -1,6 +1,9 @@
 """Explicit opt-in OpenAI-compatible provider. Credentials stay in OS keychain."""
 
 import json
+import asyncio
+import random
+from contextlib import asynccontextmanager
 import hashlib
 import ipaddress
 from urllib.parse import urlparse
@@ -153,21 +156,7 @@ class Compatible:
         if tools:
             body["tools"] = tools
         calls = {}
-        async with self.client.stream(
-            "POST",
-            url + "/chat/completions",
-            json=body,
-            headers={"Authorization": "Bearer " + key} if key else {},
-        ) as response:
-            if response.status_code == 429:
-                raise ValueError(
-                    "Provider rate limit reached. Wait before trying again; no action was retried automatically."
-                )
-            if response.status_code in {401, 403}:
-                raise ValueError(
-                    "API authentication failed. Check the key and model access in Settings."
-                )
-            response.raise_for_status()
+        async with self.completion_response(url, key, body) as response:
             async for line in response.aiter_lines():
                 if not line.startswith("data:"):
                     continue
@@ -208,6 +197,55 @@ class Compatible:
                     )
                     parsed.append(call)
                 yield {"message": {"tool_calls": parsed}}
+
+    @asynccontextmanager
+    async def completion_response(self, url, key, body):
+        """Retry a rejected transient request once; never replay a partial stream."""
+        label = {
+            "generativelanguage.googleapis.com": "Gemini",
+            "api.groq.com": "Groq",
+        }.get(urlparse(url).hostname, "The selected provider")
+        try:
+            for attempt in range(2):
+                async with self.client.stream(
+                    "POST",
+                    url + "/chat/completions",
+                    json=body,
+                    headers={"Authorization": "Bearer " + key} if key else {},
+                ) as response:
+                    transient = response.status_code in {500, 502, 503, 504}
+                    if transient and attempt == 0:
+                        # No response tokens or tool calls were accepted. Close the
+                        # failed response before this cancellable, bounded delay.
+                        pass
+                    else:
+                        if response.status_code == 429:
+                            raise ValueError(
+                                f"{label} rate limit reached. Wait and retry, or choose local Ollama in Settings. No tools were replayed."
+                            )
+                        if response.status_code in {401, 403}:
+                            raise ValueError(
+                                "API authentication failed. Check the key and model access in Settings."
+                            )
+                        if transient:
+                            raise ValueError(
+                                f"{label} is temporarily unavailable (HTTP {response.status_code}). Try again shortly or choose another model in Settings. Check tool activity before repeating an action."
+                            )
+                        if response.status_code >= 300:
+                            raise ValueError(
+                                f"{label} rejected the request (HTTP {response.status_code}). Check the model and connection in Settings."
+                            )
+                        yield response
+                        return
+                await asyncio.sleep(1 + random.uniform(0, 0.25))
+        except httpx.TimeoutException as error:
+            raise ValueError(
+                f"{label} timed out. Check tool activity before retrying; choose local Ollama for offline use."
+            ) from error
+        except httpx.HTTPError as error:
+            raise ValueError(
+                f"{label} connection was interrupted. No partial reply was replayed. Check tool activity before retrying."
+            ) from error
 
     async def close(self):
         await self.client.aclose()

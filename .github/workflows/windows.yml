@@ -44,9 +44,10 @@ jobs:
           '@ | .venv/Scripts/python.exe -
           if ($LASTEXITCODE -ne 0) { throw 'VAD verification failed' }
       - name: Backend regression tests and dependency checks
+        timeout-minutes: 5
         shell: pwsh
         run: |
-          .venv/Scripts/python.exe -m pytest backend/tests -q
+          .venv/Scripts/python.exe -m pytest backend/tests -vv -o faulthandler_timeout=30
           if ($LASTEXITCODE -ne 0) { throw 'Backend tests failed' }
           .venv/Scripts/python.exe -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Incompatible Python dependencies' }
