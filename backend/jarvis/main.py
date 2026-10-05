@@ -944,12 +944,12 @@ async def websocket(ws: WebSocket):
                 return
             # Background voices and imperfect AEC must not replace a spoken reply.
             # Address Jarvis explicitly, or use a stop command, during playback.
+            if not stopped and not await owner.verify(owner_token, pcm):
+                await lock_owner_connections()
+                return
             if not stopped and not re.match(r"^(?:hey )?jarvis\b", spoken):
                 barge_capture = None
                 await send("barge_rejected", turn, reason="requires_wake_or_stop")
-                return
-            if not stopped and not await owner.verify(owner_token, pcm):
-                await lock_owner_connections()
                 return
             await cancel()
             new_turn = uid()

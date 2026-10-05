@@ -28,3 +28,6 @@ Creator reference review: the linked KaushikShresth07 version-4 gists were revie
 
 
 Document exporters use python-docx (MIT), pypdf (BSD-3-Clause), ReportLab (BSD) and ReportLab's bundled Bitstream Vera font under its font license. Preserve package license files in distribution. Apple's native voices are OS-provided assets and are not included in Jarvis downloads or repository. Groq Orpheus is an optional hosted service subject to its current terms/access/pricing; it is not part of the offline core.
+
+
+Owner protection uses sherpa-onnx 1.13.8 ([Apache-2.0](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/LICENSE)) with a separately downloaded 3D-Speaker CAM++ model ([source and Apache-2.0 licence](https://github.com/modelscope/3D-Speaker/blob/main/LICENSE)). The model and user voiceprints are excluded from downloads. Cryptography 46.0.5 uses Apache-2.0/BSD-3-Clause ([upstream licence files](https://github.com/pyca/cryptography/tree/46.0.5)); packaged third-party licence files remain included.

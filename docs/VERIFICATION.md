@@ -20,3 +20,6 @@ Unsigned preview: Developer ID signing/notarization, physical acoustic checks, i
 ## Owner protection
 
 Experimental local speaker embedding extraction, encrypted enrollment and passphrase gates are implemented. Deterministic security tests cover encrypted restart/delete, expiry, wrong passwords, unknown speakers, enrollment races and API/WebSocket refusal. Real local-model fixture tests accepted a held-out same-speaker recording and rejected a different-speaker recording; replay was accepted. See OWNER_VOICE_SECURITY.md for measurements and limits. Owner microphone enrollment and false-accept/false-reject rates are not verified.
+
+
+5 October final owner-protection checks: 149 backend tests, 13 frontend tests, desktop session test, Ruff, dependency consistency and TypeScript/Vite build passed. The actual frozen Mac runtime extracted speaker embeddings and encrypted/decrypted a disposable profile, denied private records while locked, stayed locked after restart, rejected a wrong passphrase and deleted the voiceprint after authorized unlock. The owner’s real voice is not enrolled; physical-room, replay/synthetic-resistance and Windows-device accuracy are not verified. Public source CI checks run separately on Ubuntu.
