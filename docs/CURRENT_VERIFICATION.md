@@ -19,8 +19,8 @@ Compilation and code review do not establish rendered layout quality. Final desk
 - Unlock the host and verify the installed candidate: Settings alignment/keyboard flow, physical microphone denial/recovery, hands-free endpointing, wake activation, spoken stop and room echo. Previous owner listening confirmations establish earlier Heart audibility, not the entire new build.
 - Disconnect internet physically and repeat a local voice question. Local-only inference and offline flags have been exercised, but physical network disconnection is not verified.
 - Indic Bengali/Hindi synthesis is not ready: verified weights alone do not complete its gated tokenizer/configuration download. Optional Qwen/Chatterbox English and Kokoro Hindi/French/Spanish/Italian/Portuguese WAV generation were tested; subjective naturalness and multilingual pronunciation are not certified.
-- Windows CI packaging is separate from physical Windows microphone, install UI, permissions, login startup and acoustic checks.
-- The Mac candidate is unsigned/unnotarized. No new public binary release is claimed while these physical/rendered gates remain open.
+- The public Windows verification run passed backend/frontend tests, NSIS installer packaging and actual frozen-runtime persistence checks. See windows-0.3.2-verification.json. Physical Windows microphone, install UI, permissions, login startup and acoustic checks remain separate.
+- The Mac candidate is ad-hoc signed and its resource seal verified; Developer ID signing and notarization remain unavailable. No new public binary release is claimed while these physical/rendered gates remain open.
 - iPhone pairing, private Tailscale access and on-device voice remain unverified. Mobile setup was paused at the owner's request to finish these tests first.
 
 ## Owner acceptance procedure

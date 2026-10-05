@@ -1,0 +1,17 @@
+{
+  "run": "https://github.com/rythmscape11/jarvis-local-community/actions/runs/37360235378",
+  "tested_source_commit": "18780b4cd181647640448f4592524ffbb72bf4ab",
+  "result": "success",
+  "evidence": [
+    "verify\tBackend regression tests and dependency checks\t2026-10-05T19:05:34.7260967Z ====================== 225 passed, 3 warnings in 47.32s =======================",
+    "verify\tBackend regression tests and dependency checks\t2026-10-05T19:05:35.7925164Z No broken requirements found.",
+    "verify\tFrontend tests\t2026-10-05T19:05:38.1276926Z ^[[2m Test Files ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m",
+    "verify\tFrontend tests\t2026-10-05T19:05:38.1278242Z ^[[2m      Tests ^[[22m ^[[1m^[[32m13 passed^[[39m^[[22m^[[90m (13)^[[39m",
+    "verify\tRun the actual frozen backend against isolated records\t2026-10-05T19:10:07.8706593Z {\"os\": \"Windows-10-10.0.26100-SP0\", \"runtime\": \"jarvis-runtime.exe\", \"inference_tested\": false, \"microphone_tested\": false, \"installer_ui_tested\": false, \"document_formats\": [\"docx\", \"pdf\", \"md\", \"csv\", \"xlsx\", \"pptx\"], \"workflow_id\": \"0a0ab771-e1f5-4c56-a2b0-2bfe18af61cc\", \"workflow_persistence\": true, \"restart_persistence\": true, \"memory_deletion\": true}"
+  ],
+  "physical_windows_hardware_tested": false,
+  "installer_ui_tested": false,
+  "voice_inference_tested": false,
+  "backend_tests_passed": 225,
+  "frontend_tests_passed": 13
+}
