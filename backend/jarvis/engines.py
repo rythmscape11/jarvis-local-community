@@ -172,6 +172,7 @@ class KokoroSession:
 
     def __init__(self, session):
         self.session = session
+        self.requested_speed = 1.0
         self._model_path = session._model_path
         self.float_speed = any(
             i.name == "speed" and i.type == "tensor(float)"
@@ -183,7 +184,11 @@ class KokoroSession:
 
     def run(self, outputs, inputs):
         if self.float_speed:
-            inputs = dict(inputs, speed=np.asarray(inputs["speed"], dtype=np.float32))
+            # kokoro-onnx 0.4.9 truncates fractional speeds to int32 before run().
+            # Casting that zero back to float causes division by zero in ONNX.
+            inputs = dict(
+                inputs, speed=np.asarray([self.requested_speed], dtype=np.float32)
+            )
         return self.session.run(outputs, inputs)
 
 
@@ -196,6 +201,9 @@ class LocalSpeech(Piper):
         self.phoneme_directory = None
         from .speech import GroqSpeech, MacSpeech
 
+        from .local_voices import LocalVoiceWorkers
+
+        self.local_workers = LocalVoiceWorkers(settings)
         self.google = None
         self.online = GroqSpeech(settings)
         self.native = MacSpeech(settings)
@@ -221,6 +229,13 @@ class LocalSpeech(Piper):
                 "kokoro-am_puck",
                 "kokoro-bm_fable",
             ]
+        from .local_voices import KOKORO_EXTRA
+
+        if (MODELS / "kokoro-v1.0.onnx").exists() and (
+            MODELS / "voices-v1.0.bin"
+        ).exists():
+            voices += list(KOKORO_EXTRA)
+        voices += self.local_workers.available()
         voices += self.native.available()
         if (
             online_enabled
@@ -240,7 +255,21 @@ class LocalSpeech(Piper):
             voices += list(VOICES)
         return voices
 
-    async def synthesize(self, text, voice):
+    def supports_text(self, text, voice, language=None):
+        from .local_voices import text_language, voice_languages
+
+        language = text_language(
+            text, language or (self.settings().language if self.settings else "en")
+        )
+        return language in voice_languages(voice)
+
+    async def synthesize(self, text, voice, language=None):
+        if not self.supports_text(text, voice, language):
+            raise ValueError(
+                "Selected voice does not support this language. Select a compatible voice; the text answer remains available."
+            )
+        if voice.startswith(("qwen-", "indic-", "chatterbox-")):
+            return await self.local_workers.synthesize(text, voice, language=language)
         if voice.startswith("gemini-"):
             if not self.google:
                 raise ValueError("Google voice adapter unavailable")
@@ -289,11 +318,19 @@ class LocalSpeech(Piper):
                     ),
                 )
             speed = 1 / self.settings().voice_pace if self.settings else 1.0
+            self.kokoro.sess.requested_speed = speed
             samples, rate = self.kokoro.create(
                 text,
                 voice=voice.removeprefix("kokoro-"),
                 speed=speed,
-                lang="en-gb" if voice.startswith("kokoro-b") else "en-us",
+                lang={
+                    "h": "hi",
+                    "e": "es",
+                    "f": "fr-fr",
+                    "i": "it",
+                    "p": "pt-br",
+                    "b": "en-gb",
+                }.get(voice.removeprefix("kokoro-")[0], "en-us"),
             )
             output = io.BytesIO()
             with wave.open(output, "wb") as wav:
@@ -314,6 +351,12 @@ class LocalSpeech(Piper):
                 raise
 
     async def synthesize_expressive(self, text, voice, style):
+        if not self.supports_text(text, voice):
+            raise ValueError(
+                "Selected voice does not support this language; select a compatible voice."
+            )
+        if voice.startswith(("qwen-", "indic-", "chatterbox-")):
+            return await self.local_workers.synthesize(text, voice, style)
         if voice.startswith("gemini-"):
             if not self.google:
                 raise ValueError("Google voice adapter unavailable")
@@ -323,6 +366,7 @@ class LocalSpeech(Piper):
         return await self.synthesize(text, voice)
 
     async def close(self):
+        await self.local_workers.close()
         await self.online.close()
         await self.native.close()
         if self.phoneme_directory:

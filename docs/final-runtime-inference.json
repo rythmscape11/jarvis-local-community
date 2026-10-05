@@ -1,0 +1,144 @@
+{
+  "hardware": "Apple M5, 24GB, macOS 27.0.1 arm64",
+  "model": "qwen3:4b-instruct",
+  "ollama": "0.35.1",
+  "context_tokens": 4096,
+  "tts": "kokoro-af_heart",
+  "stt": "whisper.cpp small Metal",
+  "physical_microphone_tested": false,
+  "physical_playback_tested": false,
+  "physical_network_disconnect_tested": false,
+  "data": "Disposable synthetic records",
+  "version": "0.3.2",
+  "checks": [
+    "Frozen local engine health and authenticated session",
+    "Malformed tool arguments rejected",
+    "Real document filename/excerpt; credential file and escaping symlink excluded; persistent job succeeds",
+    "Synthetic speech -> native Whisper -> local model -> real Kokoro WAV",
+    "Complete five-sentence speech; audio sequences ordered",
+    "Owner rejection and explicit forgetting verified against SQLite",
+    "Model status truthful; voice pace setting tool persists",
+    "Natural language note creation/retrieval and tomorrow 10AM Kolkata reminder",
+    "Duplicate write creates one record",
+    "Interruption acknowledged; no stale output over 8 seconds",
+    "New turn works after cancellation"
+  ],
+  "turns": [
+    {
+      "input": "Synthetic speech through actual PCM/STT pipeline",
+      "answer": "Two plus two is four.",
+      "metrics": {
+        "stt_ms": 240.5,
+        "model_ttft_ms": 167.0,
+        "tts_first_audio_ms": 1336.7,
+        "response_first_audio_ms": 1661.3,
+        "total_ms": 1663.9
+      },
+      "audio_chunks": 1,
+      "input_end_to_first_audio_ms": 1905.7,
+      "transcript": "What is 2 plus 2?"
+    },
+    {
+      "input": "Repeat exactly these five sentences with no introduction: The sun is warm. The sky is clear. The birds are singing. The flowers are bright. The garden gate is blue.",
+      "answer": "The sun is warm.  \nThe sky is clear.  \nThe birds are singing.  \nThe flowers are bright.  \nThe garden gate is blue.",
+      "metrics": {
+        "model_ttft_ms": 181.9,
+        "tts_first_audio_ms": 353.4,
+        "response_first_audio_ms": 662.7,
+        "total_ms": 1998.3
+      },
+      "audio_chunks": 5,
+      "input_end_to_first_audio_ms": 665.7,
+      "transcript": null
+    },
+    {
+      "input": "My name is not Wrongname. Stop using names unless I give you one.",
+      "answer": "I've removed the wrong name preference. I won't guess a replacement.",
+      "metrics": {
+        "total_ms": 5.1
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "Forget Wrongname from memory.",
+      "answer": "I've removed the matching saved information and its conversation context.",
+      "metrics": {
+        "total_ms": 4.9
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "Which model are you using right now?",
+      "answer": "I'm using qwen3:4b-instruct, locally through Ollama.",
+      "metrics": {
+        "total_ms": 4.5
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "Slow your voice down. Set voice pace to 1.2.",
+      "answer": "I've updated your Jarvis settings.",
+      "metrics": {
+        "model_ttft_ms": 2030.7,
+        "total_ms": 2036.8
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "Create a note titled Product acceptance with content: Test one sign-up flow tomorrow.",
+      "answer": "I've saved your local note, Product acceptance.",
+      "metrics": {
+        "model_ttft_ms": 1308.1,
+        "total_ms": 1308.9
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "Find my Product acceptance note.",
+      "answer": "I found your note titled \"Product acceptance\" with the content: \"Test one sign-up flow tomorrow.\"",
+      "metrics": {
+        "model_ttft_ms": 703.3,
+        "total_ms": 1250.3
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "Create a reminder tomorrow at 10 AM to review the Kinetivy roadmap.",
+      "answer": "I'll remind you to Review Kinetivy roadmap on 7 October at 10:00 AM (Asia/Kolkata). It's saved in your local reminders.",
+      "metrics": {
+        "model_ttft_ms": 2119.8,
+        "total_ms": 2121.1
+      },
+      "audio_chunks": 0,
+      "input_end_to_first_audio_ms": null,
+      "transcript": null
+    },
+    {
+      "input": "What is three plus three? Answer in one short sentence.",
+      "answer": "Three plus three is six.",
+      "metrics": {
+        "model_ttft_ms": 639.0,
+        "tts_first_audio_ms": 416.3,
+        "response_first_audio_ms": 1211.9,
+        "total_ms": 1215.3
+      },
+      "audio_chunks": 1,
+      "input_end_to_first_audio_ms": 1217.9,
+      "transcript": null
+    }
+  ],
+  "interrupt_ack_ms": 1.1,
+  "passed": true
+}

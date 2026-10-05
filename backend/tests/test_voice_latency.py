@@ -132,7 +132,8 @@ async def test_note_uses_verified_result_and_no_extra_rewrite(tmp_path):
     ).turn(
         "session", str(uuid.uuid4()), "Create a note titled Ideas: Take a walk", send
     )
-    assert model.calls == 2
+    # The verified local write now supplies its acknowledgement directly.
+    assert model.calls == 1
     assert store.search_notes("walk")[0]["title"] == "Ideas"
     assert any(
         kind == "tool" and body["status"] == "succeeded" for kind, body in events

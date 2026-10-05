@@ -26,7 +26,7 @@ class ReadProject(Arguments):
 
 Documents and connector responses are untrusted data. They never create allowed directories, applications, or tools. The owner explicitly selects absolute roots through the UI. Symlinks resolve inside those roots; binaries, credential filenames, credential-like content, files above 512 KB, dependency folders and unsupported extensions are skipped. Incremental indexing hashes contents, replaces changed files, and removes vanished/excluded records. Explicit removal purges the root's FTS records. The root selection endpoint is unavailable to the model.
 
-Memory is explicit owner-supplied key/value information. Inspect/add/edit/forget controls are in the dashboard. Forgetting purges related durable memory plus conversation context and execution history so erased facts are not recovered from summaries. It does not claim secure deletion from Time Machine, OS backups or old SQLite WAL copies. Notes have separate FTS search.
+Memory is explicit owner-supplied key/value information. Inspect/add/edit/forget controls are in the dashboard. Forgetting selectively removes matching durable memory and conversation turns, invalidates summaries, and redacts related tool records while retaining idempotency tombstones. Unrelated conversations remain. Exact phrase voice deletion uses forget_information; actual user-message corrections use correct_conversation. It does not claim secure deletion from Time Machine, OS backups or old SQLite WAL copies. Notes have separate FTS search.
 
 ## Optional calendar
 

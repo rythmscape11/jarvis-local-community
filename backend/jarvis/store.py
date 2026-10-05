@@ -1,6 +1,7 @@
 """Separate durable records, transactional idempotency and FTS5 retrieval."""
 
 import json
+import hashlib
 import re
 import sqlite3
 import threading
@@ -304,14 +305,97 @@ class Store:
         if kind not in {"notes", "memory"}:
             raise ValueError("Only notes and explicit memory can be deleted here")
         with self.lock:
+            rows = self.all(f"SELECT * FROM {kind} WHERE id=?", (id,))
+            if not rows:
+                raise ValueError("Record not found")
+            row = rows[0]
+            phrases = (
+                [row["value"], row["key"]]
+                if kind == "memory"
+                else [row["title"], row["content"]]
+            )
             self.db.execute(f"DELETE FROM {kind} WHERE id=?", (id,))
             if kind == "notes":
                 self.db.execute("DELETE FROM note_fts WHERE id=?", (id,))
-            self.context_revision += 1
-            # Prevent a forgotten record from reappearing through summaries/history.
-            self.db.execute("DELETE FROM conversations")
-            self.db.execute("DELETE FROM summaries")
-            self.db.execute("DELETE FROM executions")
+            self._purge_context(phrases)
+            self.db.commit()
+
+    def _purge_context(self, phrases):
+        """Remove matching turns and derived context without erasing unrelated chats.
+
+        Keep redacted execution tombstones: deleting idempotency records could
+        replay an already completed write. Caller holds the transaction lock.
+        """
+        phrases = [p.casefold() for p in phrases if p.strip()]
+
+        def matches(text):
+            return any(p in text.casefold() for p in phrases)
+
+        turns = {
+            (r["session"], r["turn"])
+            for r in self.all("SELECT session,turn,content FROM conversations")
+            if matches(r["content"])
+        }
+        for session, turn in turns:
+            self.db.execute(
+                "DELETE FROM conversations WHERE session=? AND turn=?", (session, turn)
+            )
+        for r in self.all("SELECT key,args,result FROM executions"):
+            if matches((r["args"] or "") + " " + (r["result"] or "")):
+                self.db.execute(
+                    "UPDATE executions SET args=?,result=? WHERE key=?",
+                    (
+                        json.dumps(
+                            {
+                                "_redacted_sha256": hashlib.sha256(
+                                    (r["args"] or "").encode()
+                                ).hexdigest()
+                            }
+                        ),
+                        json.dumps(
+                            {
+                                "ok": False,
+                                "error": "Related memory was deleted; this action will not be replayed.",
+                            }
+                        ),
+                        r["key"],
+                    ),
+                )
+        self.db.execute("DELETE FROM summaries")
+        self.context_revision += 1
+        return len(turns)
+
+    def forget_information(self, query):
+        """Literal phrase deletion; no fuzzy or model-generated matching."""
+        if len(query.strip()) < 3 or not any(c.isalnum() for c in query):
+            raise ValueError("Specify an exact phrase of at least three characters")
+        phrase = query.strip().casefold()
+        with self.lock:
+            rows = self.all("SELECT id,key,value FROM memory")
+            ids = [
+                r["id"]
+                for r in rows
+                if phrase in (r["key"] + " " + r["value"]).casefold()
+            ]
+            for id in ids:
+                self.db.execute("DELETE FROM memory WHERE id=?", (id,))
+            turns = self._purge_context([phrase])
+            self.db.commit()
+            return {
+                "deleted_preferences": len(ids),
+                "deleted_turns": turns,
+                "context_revision": self.context_revision,
+            }
+
+    def update_memory(self, id, key, value):
+        with self.lock:
+            rows = self.all("SELECT key,value FROM memory WHERE id=?", (id,))
+            if not rows:
+                raise ValueError("Memory not found")
+            self.db.execute(
+                "UPDATE memory SET key=?,value=? WHERE id=?", (key, value, id)
+            )
+            self._purge_context([rows[0]["value"]])
             self.db.commit()
 
     def due_reminders(self):

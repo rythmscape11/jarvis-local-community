@@ -76,8 +76,10 @@ class Settings(BaseModel):
     @field_validator("language")
     @classmethod
     def valid_language(cls, value):
-        if value not in {"en", "bn", "auto"}:
-            raise ValueError("Use en, bn or auto")
+        from .local_languages import RECOGNITION_LANGUAGES
+
+        if value not in RECOGNITION_LANGUAGES:
+            raise ValueError("Choose a supported recognition language or auto")
         return value
 
     @field_validator("voice")

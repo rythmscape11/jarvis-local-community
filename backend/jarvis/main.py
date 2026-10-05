@@ -98,6 +98,16 @@ def select_voice(voice):
 
 tools.voice_adapter = tts
 tools.on_voice_change = select_voice
+
+
+def change_settings(updated):
+    global settings
+    config.save_settings(updated)
+    settings = updated
+
+
+tools.on_settings_change = change_settings
+tools.model_adapter = model
 jobs.news = news
 agent = Agent(store, tools, model, tts, lambda: settings)
 updates = Updates(config.DATA, lambda: settings)
@@ -369,6 +379,8 @@ async def login(body: Login, response: Response):
 
 @app.get("/api/health")
 async def health():
+    from .local_voices import voice_languages
+
     try:
         models = await model.available()
         ollama = {
@@ -391,7 +403,11 @@ async def health():
         "provider": settings.provider,
         "ollama": ollama,
         "stt": await stt.health(),
-        "tts": {"ok": settings.voice in tts.available(), "voices": tts.available()},
+        "tts": {
+            "ok": settings.voice in tts.available(),
+            "voices": tts.available(),
+            "languages": {v: list(voice_languages(v)) for v in tts.available()},
+        },
         "vad": config.VAD_PATH.exists(),
         "calendar": {
             "connected": await calendar.connected(),
@@ -410,12 +426,16 @@ class VoicePreview(BaseModel):
 
 @app.post("/api/voice-preview")
 async def voice_preview(body: VoicePreview):
+    from .local_voices import preview_text, VOICES, KOKORO_EXTRA
+
     if body.voice not in tts.available():
         raise HTTPException(400, "Voice is not downloaded")
     try:
         output = await tts.synthesize(
-            "Hello. I'm Jarvis. I can help you organize your day, find your notes, and think things through. Everything starts right here, on your computer.",
+            preview_text(body.voice),
             body.voice,
+            language=VOICES.get(body.voice, {}).get("preview_language")
+            or (KOKORO_EXTRA.get(body.voice) or ("", "en"))[1],
         )
     except ValueError as error:
         raise HTTPException(503, str(error)[:300]) from error
@@ -642,8 +662,7 @@ async def delete(kind: str, id: str):
 async def edit(id: str, body: MemoryEdit):
     if not store.all("SELECT id FROM memory WHERE id=?", (id,)):
         raise HTTPException(404, "Memory not found")
-    store.run("UPDATE memory SET key=?,value=? WHERE id=?", (body.key, body.value, id))
-    store.clear_conversations()
+    store.update_memory(id, body.key, body.value)
     return {"ok": True}
 
 

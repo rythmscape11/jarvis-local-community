@@ -1,10 +1,12 @@
 """Typed tool registry. Model output has no authority to bypass validation."""
 
 import asyncio
+import hashlib
 import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from .local_voices import VOICES, KOKORO_EXTRA
 from .store import now, uid
 from .control import SystemAction
 from typing import Literal
@@ -72,6 +74,35 @@ class Forget(Arguments):
     key: str = Field(min_length=1, max_length=100)
 
 
+class ForgetInformation(Arguments):
+    query: str = Field(
+        min_length=3,
+        max_length=200,
+        description="Exact phrase explicitly supplied by the owner to forget. Never infer a broad topic.",
+    )
+
+
+class CorrectConversation(Arguments):
+    id: int = Field(gt=0)
+    content: str = Field(
+        min_length=1,
+        max_length=20000,
+        description="Corrected user statement supplied by the owner; no invented facts.",
+    )
+
+
+class SettingsUpdate(Arguments):
+    language: str | None = Field(default=None, max_length=10)
+    voice_pace: float | None = Field(default=None, ge=0.8, le=1.4)
+    timezone: str | None = Field(default=None, max_length=100)
+    context_tokens: int | None = Field(default=None, ge=4096, le=8192)
+    response_tokens: int | None = Field(default=None, ge=320, le=4096)
+    long_speech_sentences: int | None = Field(default=None, ge=6, le=80)
+    child_mode: bool | None = None
+    news_priority: Literal["india", "world"] | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=100)
+
+
 class NewsQuery(Arguments):
     query: str = Field(default="", max_length=500)
     category: Literal[
@@ -119,37 +150,19 @@ VOICE_NAMES = {
 }
 
 
+VOICE_NAMES.update({info["name"]: id for id, info in VOICES.items()})
+VOICE_NAMES.update({info[0]: id for id, info in KOKORO_EXTRA.items()})
+
+
 class VoiceChoice(Arguments):
-    name: Literal[
-        "Google Kore",
-        "Google Aoede",
-        "Google Puck",
-        "Google Charon",
-        "Michael",
-        "Heart",
-        "Bella",
-        "Nicole",
-        "Sarah",
-        "Emma",
-        "Isabella",
-        "George",
-        "Aoede",
-        "Kore",
-        "Nova",
-        "Fenrir",
-        "Puck",
-        "Fable",
-        "LJ Speech",
-        "Hannah",
-        "Diana",
-        "Autumn",
-        "Austin",
-        "Daniel",
-        "Troy",
-        "Rishi",
-        "Tara",
-        "Aman",
-    ]
+    name: str = Field(max_length=100, json_schema_extra={"enum": list(VOICE_NAMES)})
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, value):
+        if value not in VOICE_NAMES:
+            raise ValueError("Choose a named Jarvis voice")
+        return value
 
 
 class RunWorkflow(Arguments):
@@ -167,6 +180,12 @@ class EmailDraft(Arguments):
 
 
 DEFINITIONS = {
+    "update_settings": (
+        SettingsUpdate,
+        "Change owner-requested Jarvis language, speech pace (higher is slower), timezone, context, reply length, child mode, news priority or an already downloaded local model. Does not change credentials, permissions, owner lock, cloud provider or operating-system settings. Use set_voice for the selected voice.",
+        "local_write",
+        10,
+    ),
     "search_current_news": (
         Search,
         "Use optional Google cited search for an explicit public news/research topic only. Never send private mail, memory or account data as the query. Requires owner opt-in and their Gemini key. Returns real citation annotations; fails closed if absent.",
@@ -357,7 +376,19 @@ DEFINITIONS = {
     ),
     "forget_this": (
         Forget,
-        "Forget an explicit memory key requested by the user. Purges conversation context too.",
+        "Forget an explicit memory key requested by the user, with matching chat context. Unrelated conversations remain.",
+        "local_write",
+        5,
+    ),
+    "forget_information": (
+        ForgetInformation,
+        "Delete an exact owner-supplied phrase from matching saved preferences and conversation turns, including paired replies and summaries. Does not delete notes, reminders or source documents. Only use for an explicit forget/delete request; not a question about memory capabilities.",
+        "local_write",
+        5,
+    ),
+    "correct_conversation": (
+        CorrectConversation,
+        "Correct an actual saved user-message ID returned by search_conversations, using the owner's supplied replacement statement. Removes its old paired reply and summaries.",
         "local_write",
         5,
     ),
@@ -390,6 +421,8 @@ class Tools:
         self.news = None
         self.voice_adapter = None
         self.on_voice_change = None
+        self.on_settings_change = None
+        self.model_adapter = None
 
     async def execute(self, name, arguments, key):
         if name not in DEFINITIONS:
@@ -408,7 +441,13 @@ class Tools:
                 rows = self.store.all("SELECT * FROM executions WHERE key=?", (key,))
                 if rows:
                     record = rows[0]
-                    if record["tool"] != name or record["args"] != encoded:
+                    stored_args = json.loads(record["args"])
+                    same_args = record["args"] == encoded or (
+                        isinstance(stored_args, dict)
+                        and stored_args.get("_redacted_sha256")
+                        == hashlib.sha256(encoded.encode()).hexdigest()
+                    )
+                    if record["tool"] != name or not same_args:
                         return {
                             "ok": False,
                             "error": "Idempotency key reused with different arguments",
@@ -455,6 +494,30 @@ class Tools:
 
     async def dispatch(self, name, args):
         s = self.store
+        if name == "update_settings":
+            from .config import Settings
+
+            changes = args.model_dump(exclude_none=True)
+            if not changes:
+                raise ValueError("Specify a setting to change")
+            updated = Settings.model_validate(self.settings().model_dump() | changes)
+            if "model" in changes:
+                if updated.provider != "ollama" or not self.model_adapter:
+                    raise ValueError(
+                        "Use Settings to configure API models; voice changes only select installed local models"
+                    )
+                available = await self.model_adapter.available()
+                if (
+                    updated.model not in available
+                    and updated.model + ":latest" not in available
+                ):
+                    raise ValueError("Download that local model first")
+            if not self.on_settings_change:
+                raise ValueError("Settings persistence unavailable")
+            self.on_settings_change(updated)
+            if any(self.settings().model_dump()[k] != v for k, v in changes.items()):
+                raise ValueError("Settings update could not be verified")
+            return {"changed": changes, "settings": self.settings().model_dump()}
         if name == "cancel_calendar_event":
             if not self.connectors:
                 raise ValueError("Connectors unavailable")
@@ -634,5 +697,18 @@ class Tools:
             rows = s.all("SELECT id FROM memory WHERE key=?", (args.key,))
             for row in rows:
                 s.delete_record("memory", row["id"])
-            return {"deleted": len(rows), "key": args.key}
+            return {
+                "deleted": len(rows),
+                "key": args.key,
+                "context_revision": s.context_revision,
+            }
+        if name == "forget_information":
+            return s.forget_information(args.query)
+        if name == "correct_conversation":
+            s.edit_conversation(args.id, args.content)
+            return {
+                "id": args.id,
+                "corrected": True,
+                "context_revision": s.context_revision,
+            }
         raise ValueError("No execution function")

@@ -3,7 +3,24 @@
 import re
 
 
+def model_status_request(text):
+    return bool(
+        re.search(r"\b(?:model|provider)\b", text, re.I)
+        and re.search(r"\b(?:you|your|jarvis)\b", text, re.I)
+        and re.search(r"\b(?:using|selected|running|use|active)\b", text, re.I)
+    )
+
+
 def current_request(text):
+    if model_status_request(text):
+        return None
+    # A temporal word in a personal conversation is not a request for public facts.
+    if re.search(
+        r"\b(?:i feel|i'm (?:feeling|overwhelmed|tired|sad|happy)|i am (?:feeling|overwhelmed|tired)|tell (?:me|us) a story|recite|motivate me)\b",
+        text,
+        re.I,
+    ):
+        return None
     # Private records and action requests retain their own authenticated tools.
     if re.search(
         r"\b(my|our|email|gmail|inbox|calendar|reminder|password|secret|token|api key|address|phone|account|create|save|schedule|book|send|delete|cancel|remember)\b|@|\b\d{6,}\b",
@@ -19,22 +36,39 @@ def current_request(text):
         return None
     if re.search(r"\b(news|headlines|current affairs|what.s happening)\b", text, re.I):
         return "news"
-    if re.search(
-        r"\b(latest|currently|current|recent|today|right now|this week|live data|search (?:the )?web|google search)\b",
-        text,
-        re.I,
-    ) or re.search(
-        r"\bwho is\b.*\b(president|prime minister|chief minister|ceo|governor)\b",
-        text,
-        re.I,
+    if (
+        re.search(
+            r"\b(latest|currently|current|recent|today|right now|this week|live data|search (?:the )?web|google search)\b",
+            text,
+            re.I,
+        )
+        and re.search(
+            r"\b(?:what|who|which|when|where|how|tell|give|report|summarize|check|search|research|look up|find)\b",
+            text,
+            re.I,
+        )
+        or re.search(
+            r"\bwho is\b.*\b(president|prime minister|chief minister|ceo|governor)\b",
+            text,
+            re.I,
+        )
     ):
         return "web"
     return None
 
 
 def knowledge_answer(text, settings):
+    if model_status_request(text):
+        location = (
+            "locally through Ollama"
+            if settings.provider == "ollama"
+            else "through your configured compatible API"
+        )
+        return f"I'm using {settings.model}, {location}."
     if not (
-        re.search(r"\b(model|training|trained|cutoff|knowledge|data)\b", text, re.I)
+        re.search(
+            r"\b(training|trained|cutoff|knowledge|data|up.?to.?date)\b", text, re.I
+        )
         and re.search(r"\b(your|you|up.?to.?date|live|2024|cutoff)\b", text, re.I)
     ):
         return None

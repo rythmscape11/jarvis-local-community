@@ -29,6 +29,9 @@ from jarvis.engines import LocalSpeech
         ("Create a note about latest news", None),
         ("Latest news for private@example.com", None),
         ("Your training data is from 2024", None),
+        ("I'm overwhelmed by work today. Talk with me naturally.", None),
+        ("I feel sad today. Can we talk?", None),
+        ("Tell me a story today", None),
     ],
 )
 def test_routing_excludes_private_records_and_actions(question, kind):

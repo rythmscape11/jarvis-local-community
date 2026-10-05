@@ -85,7 +85,7 @@ type Health = {
     message?: string;
   };
   stt: boolean;
-  tts: { ok: boolean; voices: string[] };
+  tts: { ok: boolean; voices: string[]; languages?: Record<string, string[]> };
   vad: boolean;
   calendar: { connected: boolean; writable_connected: boolean; configured: boolean };
   settings: Config;
@@ -144,6 +144,11 @@ const voiceNames: Record<string, string> = {
   "groq-daniel": "Daniel · male · Groq online",
   "groq-troy": "Troy · male · Groq online",
 };
+const languageNames: Record<string, string> = {en:"English",bn:"Bengali",hi:"Hindi",es:"Spanish",fr:"French",de:"German",it:"Italian",pt:"Portuguese",ru:"Russian",zh:"Chinese",ja:"Japanese",ko:"Korean",ta:"Tamil",te:"Telugu",mr:"Marathi",gu:"Gujarati",kn:"Kannada",ml:"Malayalam",pa:"Punjabi",ur:"Urdu",ar:"Arabic",auto:"Automatic / mixed language"};
+for (const speaker of ["Serena","Vivian","Ryan","Aiden","Uncle_Fu","Dylan","Eric","Ono_Anna","Sohee"]) voiceNames["qwen-"+speaker] = "Qwen " + speaker.replaceAll("_", " ");
+for (const speaker of ["Aditi","Arjun","Divya","Rohit","Mary","Thoma"]) voiceNames["indic-"+speaker] = "Indic " + speaker;
+Object.assign(voiceNames, {"chatterbox-female":"Chatterbox female", "chatterbox-male":"Chatterbox male", "kokoro-hf_alpha":"Alpha · Hindi female", "kokoro-hf_beta":"Beta · Hindi female", "kokoro-hm_omega":"Omega · Hindi male", "kokoro-hm_psi":"Psi · Hindi male", "kokoro-ef_dora":"Dora · Spanish", "kokoro-em_alex":"Alex · Spanish", "kokoro-ff_siwis":"Siwis · French", "kokoro-if_sara":"Sara · Italian", "kokoro-im_nicola":"Nicola · Italian", "kokoro-pf_dora":"Dora · Portuguese", "kokoro-pm_alex":"Alex · Portuguese"});
+const voiceLanguageLabel = (languages: string[] = []) => languages.length > 4 ? `${languages.length} languages` : languages.map(l => languageNames[l] || l).join(", ");
 const caption = (value: string) =>
   value
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
@@ -201,6 +206,26 @@ export default function App() {
   const [tab, setTab] = useState("conversation"),
     [settings, setSettings] = useState(false),
     [config, setConfig] = useState<Config | null>(null);
+  const closeSettings = () => {
+    setConfig(health?.settings || null);
+    setProviderKey("");
+    setSettings(false);
+  };
+  useEffect(() => {
+    if (!settings) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const page = document.querySelector<HTMLElement>(".settings-page");
+    page?.querySelector<HTMLElement>('button[aria-label="Close settings"]')?.focus();
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !page) return;
+      const controls = [...page.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, a[href]')].filter(item => item.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !page.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !page.contains(document.activeElement))) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", trap);
+    return () => { document.removeEventListener("keydown", trap); previous?.focus(); };
+  }, [settings]);
   const [muted, setMuted] = useState(false),
     [handsfree, setHandsfree] = useState(false),
     [capturing, setCapturing] = useState(false),
@@ -650,6 +675,14 @@ export default function App() {
               : current,
           );
         }
+        if (message.name === "update_settings" && message.result?.ok) {
+          setConfig(message.result.data.settings);
+        }
+        if (["forget_this", "forget_information", "correct_conversation"].includes(message.name) && message.result?.ok) {
+          setMessages(old => old.filter(m => m.turn === message.turn_id));
+          setArchive([]);
+          setArchiveLoaded(false);
+        }
         setActivity((old) =>
           [`${message.name} · ${message.status}`, ...old].slice(0, 20),
         );
@@ -824,7 +857,11 @@ export default function App() {
   }, [messages]);
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
-      if (event.code === "Escape") stop();
+      if (event.code === "Escape") {
+        if (settings) closeSettings();
+        else if (voicePicker) setVoicePicker(false);
+        else stop();
+      }
       if (event.code === "Space" && event.altKey) {
         event.preventDefault();
         void talk();
@@ -1074,7 +1111,7 @@ export default function App() {
               </small>
             </div>
           </div>
-          <span className="version">JARVIS LOCAL / 0.2.0</span>
+          <span className="version">JARVIS LOCAL / 0.3.2</span>
         </div>
       </aside>
       <main className="main">
@@ -1744,7 +1781,7 @@ export default function App() {
             </div>
             <p className="subtle">
               {tab === "memory"
-                ? "Conversation recall is automatic. Explicit preferences are separate; forgetting a preference also clears chat context to prevent it resurfacing."
+                ? "Conversation recall is automatic. Explicit preferences are separate; forgetting a preference removes matching chat context to prevent it resurfacing."
                 : tab === "reminders"
                   ? "Reminders notify in this dashboard while Jarvis is running. Overdue reminders return after restart."
                   : tab === "jobs"
@@ -1862,8 +1899,7 @@ export default function App() {
                 </button>
               </div>
               <p className="subtle">
-                Local American, British and Indian voices. Groq voices use the
-                internet when explicitly enabled.
+                Downloaded voices work offline. Qwen and Indic offer expressive local speech; Google and Groq use the internet when enabled.
               </p>
               <p className="subtle">
                 Scroll for more voices. Preview before selecting.
@@ -1881,12 +1917,13 @@ export default function App() {
                         v.startsWith("kokoro-"),
                       ) || [],
                   },
+                  ...["qwen-", "indic-", "chatterbox-"].map(prefix => ({label: ({"qwen-":"Expressive Qwen · local", "indic-":"Indian languages · local", "chatterbox-":"Chatterbox · synthetic local voices"})[prefix] || prefix, voices: health?.tts.voices.filter(v => v.startsWith(prefix)) || []})),
                   {
                     label: "Other local voices",
                     voices:
                       health?.tts.voices.filter(
                         (v) =>
-                          !v.startsWith("kokoro-") && !v.startsWith("groq-") && !v.startsWith("gemini-"),
+                          !v.startsWith("kokoro-") && !v.startsWith("groq-") && !v.startsWith("gemini-") && !v.startsWith("qwen-") && !v.startsWith("indic-") && !v.startsWith("chatterbox-"),
                       ) || [],
                   },
                   {
@@ -1931,6 +1968,7 @@ export default function App() {
                             aria-pressed={health.settings.voice === v}
                           >
                             {voiceNames[v] || v}
+                            <small title={(health?.tts.languages?.[v] || []).map(l => languageNames[l] || l).join(", ")}>{voiceLanguageLabel(health?.tts.languages?.[v])}</small>
                             {health.settings.voice === v && <Check size={16} />}
                           </button>
                           <button
@@ -1966,24 +2004,27 @@ export default function App() {
           document.body,
         )}
       {settings && (
-        <div className="modal-backdrop">
+        <div className="settings-backdrop">
           <section
-            className="modal"
+            className="settings-page"
             role="dialog"
             aria-modal="true"
             aria-label="Settings and connections"
           >
-            <div className="section-heading">
-              <h2>Make Jarvis yours.</h2>
+            <div className="settings-header">
+              <div><p className="eyebrow">YOUR PRIVATE WORKSPACE</p><h2>Make Jarvis yours.</h2><p className="subtle">Voice, intelligence and privacy — in one place.</p></div>
               <button
                 aria-label="Close settings"
-                onClick={() => setSettings(false)}
+                onClick={closeSettings}
               >
-                <X size={20} />
+                <X size={20} /> Back to Jarvis
               </button>
             </div>
+            <nav className="settings-navigation" aria-label="Settings sections">
+              {[['voice', 'Voice & language'], ['model', 'AI model'], ['memory', 'Memory & privacy'], ['live', 'Live information'], ['system', 'System'], ['connections', 'Connections']].map(([id, label]) => <a key={id} href={'#settings-' + id}>{label}</a>)}
+            </nav>
             {config && (
-              <form
+              <form className="settings-grid"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void safe(async () => {
@@ -2000,7 +2041,170 @@ export default function App() {
                   });
                 }}
               >
+                <section id="settings-voice" className="settings-card"><h3>Voice & language</h3><p className="subtle">Choose how Jarvis listens and speaks.</p>                <label>
+                  Speaking voice
+                  <select
+                    value={config.voice}
+                    onChange={(e) =>
+                      setConfig({ ...config, voice: e.target.value })
+                    }
+                  >
+                    {([...new Set([
+                      ...(health?.tts.voices || []).filter(v => !v.startsWith("groq-") && !v.startsWith("gemini-")),
+                      ...(config.online_voice_enabled ? ["groq-hannah","groq-diana","groq-autumn","groq-austin","groq-daniel","groq-troy"] : []),
+                      ...(config.google_voice_enabled ? ["gemini-Kore","gemini-Aoede","gemini-Puck","gemini-Charon"] : []),
+                    ])]
+                    ).map((v) => (
+                      <option key={v} value={v}>
+                        {voiceNames[v] || v}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label>
+                  Voice pacing
+                  <select
+                    value={config.voice_pace}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        voice_pace: Number(e.target.value),
+                      })
+                    }
+                  >
+                    <option value={0.9}>Brisk</option>
+                    <option value={1.0}>Natural pace</option>
+                    <option value={1.2}>Relaxed</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void safe(async () => {
+                      stop();
+                      await player.current.activate();
+                      setSpeakerSignal(player.current.analyser);
+                      const response = await fetch("/api/voice-preview", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ voice: config.voice }),
+                      });
+                      if (!response.ok) throw await responseError(response);
+                      let bytes = "";
+                      for (const byte of new Uint8Array(
+                        await response.arrayBuffer(),
+                      ))
+                        bytes += String.fromCharCode(byte);
+                      setState("speaking");
+                      player.current.push(btoa(bytes));
+                      player.current.complete();
+                    })
+                  }
+                >
+                  Preview selected voice
+                </button>
+                <label>
+                  Recognition language
+                  <select
+                    value={config.language}
+                    onChange={(e) =>
+                      setConfig({ ...config, language: e.target.value })
+                    }
+                  >
+{Object.entries(languageNames).map(([code,name]) => <option key={code} value={code}>{name}</option>)}
+                  </select>
+                </label>
+                <p className="subtle">
+                  Recognition and speaking languages are separate. Choose Automatic for mixed speech. Select an Indic voice for Bengali; Qwen supports ten languages including English, Spanish and French. Unsupported spoken output remains available as text.
+                </p>
+                <label>
+                  Microphone
+                  <select
+                    value={device}
+                    onChange={(e) => {
+                      stop();
+                      setDevice(e.target.value);
+                    }}
+                  >
+                    <option value="">System default</option>
+                    {devices.map((d, i) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Microphone ${i + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void safe(async () => {
+                      await talk();
+                    })
+                  }
+                >
+                  Test microphone permission
+                </button>
+<details className="settings-advanced"><summary>Advanced voice services</summary>                <label className="check-label">
+                  <input
+                    type="checkbox"
+                    checked={config.online_voice_enabled}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        online_voice_enabled: e.target.checked,
+                        voice:
+                          !e.target.checked && config.voice.startsWith("groq-")
+                            ? "kokoro-af_heart"
+                            : config.voice,
+                      })
+                    }
+                  />
+                  Enable expressive Groq voices (online)
+                </label>
+                <p className="setting-note">
+                  Sends spoken answer text to Groq using your saved key. Account
+                  quotas and pricing apply. Choose a local voice for offline
+                  use.
+                </p>
+                {(config.online_voice_enabled || config.google_voice_enabled) && (
+                  <label>
+                    Local voice if online speech fails
+                    <select
+                      value={config.online_voice_fallback || "none"}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          online_voice_fallback: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="none">
+                        Disabled · keep the selected voice
+                      </option>
+                      {(health?.tts.voices || [])
+                        .filter((v) =>
+                          [
+                            "kokoro-af_heart",
+                            "kokoro-bf_emma",
+                            "mac-Tara",
+                            "mac-Rishi",
+                            "en_US-ljspeech-high",
+                          ].includes(v),
+                        )
+                        .map((v) => (
+                          <option key={v} value={v}>
+                            {voiceNames[v] || v}
+                          </option>
+                        ))}
+                    </select>
+                    <small>
+                      Shows a notice and uses this local voice for the rest of
+                      the reply. Your selected voice stays saved.
+                    </small>
+                  </label>
+                )}
+</details>                </section>
+                <section id="settings-model" className="settings-card"><h3>AI model</h3><p className="subtle">Local by default. Online services use your own account.</p>                <label>
                   AI provider
                   <select
                     value={
@@ -2182,178 +2386,7 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                <label className="check-label">
-                  <input
-                    type="checkbox"
-                    checked={config.online_voice_enabled}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        online_voice_enabled: e.target.checked,
-                        voice:
-                          !e.target.checked && config.voice.startsWith("groq-")
-                            ? "kokoro-af_heart"
-                            : config.voice,
-                      })
-                    }
-                  />
-                  Enable expressive Groq voices (online)
-                </label>
-                <p className="setting-note">
-                  Sends spoken answer text to Groq using your saved key. Account
-                  quotas and pricing apply. Choose a local voice for offline
-                  use.
-                </p>
-                <section className="update-settings">
-                  <h3>Live information</h3>
-                  <p className="setting-note">Model training has a cutoff. Jarvis checks sources before answering current questions, and displays publication dates and retrieval times. Conversation memory provides your context; it does not update model weights.</p>
-                  <label className="check-label"><input type="checkbox" checked={config.google_search_enabled ?? false} onChange={e => setConfig({...config, google_search_enabled: e.target.checked})} />Enable Google cited search for current public questions</label>
-                  {config.google_search_enabled && <label>Google search model<select value={config.google_search_model || "gemini-3.1-flash-lite"} onChange={e => setConfig({...config, google_search_model:e.target.value})}><option>gemini-3.1-flash-lite</option><option>gemini-2.5-flash-lite</option><option>gemini-3.8-flash</option></select><small>Available models and quotas vary by account. A failed lookup never switches providers silently.</small></label>}
-                  <p className="setting-note">Uses your own Gemini key saved under the Google provider preset. Sends the current public topic, without saved conversation excerpts. Requires internet. Limited to 10 attempts per UTC day. Provider quotas and pricing apply; free-tier data may be used by Google to improve products. No billing is enabled by Jarvis.</p>
-                  <label className="check-label"><input type="checkbox" checked={config.google_voice_enabled ?? false} onChange={e => setConfig({...config, google_voice_enabled:e.target.checked,voice: !e.target.checked && config.voice.startsWith("gemini-") ? "kokoro-af_heart" : config.voice})}/>Enable optional Google voices</label>
-                  <p className="setting-note">Sends the spoken reply to Google. Limited to 20 synthesis attempts per UTC day; longer replies may need several attempts. Local Heart remains available offline. Account/model access must be verified.</p>
-                </section>
-                {(config.online_voice_enabled || config.google_voice_enabled) && (
-                  <label>
-                    Local voice if online speech fails
-                    <select
-                      value={config.online_voice_fallback || "none"}
-                      onChange={(e) =>
-                        setConfig({
-                          ...config,
-                          online_voice_fallback: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="none">
-                        Disabled · keep the selected voice
-                      </option>
-                      {(health?.tts.voices || [])
-                        .filter((v) =>
-                          [
-                            "kokoro-af_heart",
-                            "kokoro-bf_emma",
-                            "mac-Tara",
-                            "mac-Rishi",
-                            "en_US-ljspeech-high",
-                          ].includes(v),
-                        )
-                        .map((v) => (
-                          <option key={v} value={v}>
-                            {voiceNames[v] || v}
-                          </option>
-                        ))}
-                    </select>
-                    <small>
-                      Shows a notice and uses this local voice for the rest of
-                      the reply. Your selected voice stays saved.
-                    </small>
-                  </label>
-                )}
-                <section className="update-settings">
-                  <h3>Software updates · {softwareUpdate?.current_version || "0.3.1"}</h3>
-                  <label className="check-label"><input type="checkbox" checked={config.update_checks ?? true} onChange={(e) => setConfig({...config,update_checks:e.target.checked})}/> Check for new releases daily</label>
-                  <p className="setting-note">Only public release metadata is requested from GitHub. No chats, memory, credentials or device identifier are sent. Updates require your review; automatic installation is not enabled.</p>
-                  <button type="button" onClick={() => void safe(async () => {setSoftwareUpdate(await api<NonNullable<typeof softwareUpdate>>("/updates/check", "POST"));})}>Check now</button>
-                  <p className="setting-note">{softwareUpdate?.status === "up_to_date" ? "You have the current release." : softwareUpdate?.status === "unavailable" ? "Update check unavailable. Your installed software keeps working." : softwareUpdate?.status === "no_release" ? "No public release is available yet." : softwareUpdate?.status === "disabled" ? "Automatic checks disabled." : softwareUpdate?.available ? `Version ${softwareUpdate.latest_version} is available.` : "Check public releases without changing your installation."}</p>
-                </section>
-                <OwnerSecurityPanel />
-                <label className="check-label">
-                  <input type="checkbox" checked={config.conversation_recall ?? true} onChange={(e) => setConfig({...config, conversation_recall: e.target.checked})} />
-                  Automatically recall saved conversations
-                </label>
-                <p className="setting-note">Relevant past user messages inform future answers without “Remember this.” Inspect, correct or delete them in Memory. An online model receives selected excerpts. Turning recall off keeps the archive and current chat context.</p>
-                <label className="check-label">
-                  <input
-                    type="checkbox"
-                    checked={config.child_mode}
-                    onChange={(e) =>
-                      setConfig({ ...config, child_mode: e.target.checked })
-                    }
-                  />
-                  Family-friendly conversation and stories
-                </label>
-                <label>
-                  Speaking voice
-                  <select
-                    value={config.voice}
-                    onChange={(e) =>
-                      setConfig({ ...config, voice: e.target.value })
-                    }
-                  >
-                    {([...new Set([
-                      ...(health?.tts.voices || []).filter(v => !v.startsWith("groq-") && !v.startsWith("gemini-")),
-                      ...(config.online_voice_enabled ? ["groq-hannah","groq-diana","groq-autumn","groq-austin","groq-daniel","groq-troy"] : []),
-                      ...(config.google_voice_enabled ? ["gemini-Kore","gemini-Aoede","gemini-Puck","gemini-Charon"] : []),
-                    ])]
-                    ).map((v) => (
-                      <option key={v} value={v}>
-                        {voiceNames[v] || v}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Voice pacing
-                  <select
-                    value={config.voice_pace}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        voice_pace: Number(e.target.value),
-                      })
-                    }
-                  >
-                    <option value={0.9}>Brisk</option>
-                    <option value={1.0}>Natural pace</option>
-                    <option value={1.2}>Relaxed</option>
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void safe(async () => {
-                      stop();
-                      await player.current.activate();
-                      setSpeakerSignal(player.current.analyser);
-                      const response = await fetch("/api/voice-preview", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ voice: config.voice }),
-                      });
-                      if (!response.ok) throw await responseError(response);
-                      let bytes = "";
-                      for (const byte of new Uint8Array(
-                        await response.arrayBuffer(),
-                      ))
-                        bytes += String.fromCharCode(byte);
-                      setState("speaking");
-                      player.current.push(btoa(bytes));
-                      player.current.complete();
-                    })
-                  }
-                >
-                  Preview selected voice
-                </button>
-                <label>
-                  Recognition language
-                  <select
-                    value={config.language}
-                    onChange={(e) =>
-                      setConfig({ ...config, language: e.target.value })
-                    }
-                  >
-                    <option value="en">English</option>
-                    <option value="bn">Bengali</option>
-                    <option value="auto">Automatic / mixed language</option>
-                  </select>
-                </label>
-                <p className="subtle">
-                  Bengali text is supported by the multilingual STT model.
-                  Bengali speech output is unverified; use English voice
-                  fallback.
-                </p>
-                <label>
+<details className="settings-advanced"><summary>Context & workflow model</summary>                <label>
                   Context budget
                   <select
                     value={config.context_tokens}
@@ -2369,43 +2402,25 @@ export default function App() {
                     <option value={8192}>8,192 tokens</option>
                   </select>
                 </label>
-                <label>
-                  Timezone
+</details>                </section>
+                <section id="settings-memory" className="settings-card"><h3>Memory & privacy</h3><p className="subtle">Control what Jarvis recalls.</p>
+                <label className="check-label">
+                  <input type="checkbox" checked={config.conversation_recall ?? true} onChange={(e) => setConfig({...config, conversation_recall: e.target.checked})} />
+                  Automatically recall saved conversations
+                </label>
+                <p className="setting-note">Relevant past user messages inform future answers without “Remember this.” Inspect, correct or delete them in Memory. An online model receives selected excerpts. Turning recall off keeps the archive and current chat context.</p>
+                <label className="check-label">
                   <input
-                    value={config.timezone}
+                    type="checkbox"
+                    checked={config.child_mode}
                     onChange={(e) =>
-                      setConfig({ ...config, timezone: e.target.value })
+                      setConfig({ ...config, child_mode: e.target.checked })
                     }
                   />
+                  Family-friendly conversation and stories
                 </label>
-                <label>
-                  Microphone
-                  <select
-                    value={device}
-                    onChange={(e) => {
-                      stop();
-                      setDevice(e.target.value);
-                    }}
-                  >
-                    <option value="">System default</option>
-                    {devices.map((d, i) => (
-                      <option key={d.deviceId} value={d.deviceId}>
-                        {d.label || `Microphone ${i + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void safe(async () => {
-                      await talk();
-                    })
-                  }
-                >
-                  Test microphone permission
-                </button>
-                <label className="check-label">
+                </section>
+                <section id="settings-live" className="settings-card"><h3>Live information</h3>                <label className="check-label">
                   <input
                     type="checkbox"
                     checked={config.news_enabled}
@@ -2427,7 +2442,26 @@ export default function App() {
                     <option value="world">Global briefing</option>
                   </select>
                 </label>
-                <label className="check-label">
+                <section className="update-settings">
+                  <h3>Live information</h3>
+                  <p className="setting-note">Model training has a cutoff. Jarvis checks sources before answering current questions, and displays publication dates and retrieval times. Conversation memory provides your context; it does not update model weights.</p>
+                  <label className="check-label"><input type="checkbox" checked={config.google_search_enabled ?? false} onChange={e => setConfig({...config, google_search_enabled: e.target.checked})} />Enable Google cited search for current public questions</label>
+                  {config.google_search_enabled && <label>Google search model<select value={config.google_search_model || "gemini-3.1-flash-lite"} onChange={e => setConfig({...config, google_search_model:e.target.value})}><option>gemini-3.1-flash-lite</option><option>gemini-2.5-flash-lite</option><option>gemini-3.8-flash</option></select><small>Available models and quotas vary by account. A failed lookup never switches providers silently.</small></label>}
+                  <p className="setting-note">Uses your own Gemini key saved under the Google provider preset. Sends the current public topic, without saved conversation excerpts. Requires internet. Limited to 10 attempts per UTC day. Provider quotas and pricing apply; free-tier data may be used by Google to improve products. No billing is enabled by Jarvis.</p>
+                  <label className="check-label"><input type="checkbox" checked={config.google_voice_enabled ?? false} onChange={e => setConfig({...config, google_voice_enabled:e.target.checked,voice: !e.target.checked && config.voice.startsWith("gemini-") ? "kokoro-af_heart" : config.voice})}/>Enable optional Google voices</label>
+                  <p className="setting-note">Sends the spoken reply to Google. Limited to 20 synthesis attempts per UTC day; longer replies may need several attempts. Local Heart remains available offline. Account/model access must be verified.</p>
+                </section>
+                </section>
+                <section id="settings-system" className="settings-card"><h3>System & permissions</h3>                <label>
+                  Timezone
+                  <input
+                    value={config.timezone}
+                    onChange={(e) =>
+                      setConfig({ ...config, timezone: e.target.value })
+                    }
+                  />
+                </label>
+<details className="settings-advanced"><summary>Owner-reviewed computer control</summary>                <label className="check-label">
                   <input
                     type="checkbox"
                     checked={config.computer_control}
@@ -2465,13 +2499,20 @@ export default function App() {
                     alt="Current system screen, reviewed locally only"
                   />
                 )}
-                <button type="submit" className="primary">
-                  Save settings
-                </button>
+</details>                </section>
+                <section id="settings-updates" className="settings-card"><h3>Software updates</h3>                <section className="update-settings">
+                  <h3>Software updates · {softwareUpdate?.current_version || "0.3.2"}</h3>
+                  <label className="check-label"><input type="checkbox" checked={config.update_checks ?? true} onChange={(e) => setConfig({...config,update_checks:e.target.checked})}/> Check for new releases daily</label>
+                  <p className="setting-note">Only public release metadata is requested from GitHub. No chats, memory, credentials or device identifier are sent. Updates require your review; automatic installation is not enabled.</p>
+                  <button type="button" onClick={() => void safe(async () => {setSoftwareUpdate(await api<NonNullable<typeof softwareUpdate>>("/updates/check", "POST"));})}>Check now</button>
+                  <p className="setting-note">{softwareUpdate?.status === "up_to_date" ? "You have the current release." : softwareUpdate?.status === "unavailable" ? "Update check unavailable. Your installed software keeps working." : softwareUpdate?.status === "no_release" ? "No public release is available yet." : softwareUpdate?.status === "disabled" ? "Automatic checks disabled." : softwareUpdate?.available ? `Version ${softwareUpdate.latest_version} is available.` : "Check public releases without changing your installation."}</p>
+                </section>
+                </section>
+                <div className="settings-save"><p className="subtle">Your changes apply when you save. Connection and security actions apply immediately.</p><button type="button" onClick={closeSettings}>Cancel</button><button type="submit" className="primary">Save settings</button></div>
               </form>
             )}
-            <hr />
-            <h3>Desktop startup & wake phrase</h3>
+            <div className="settings-grid settings-connections">
+            <section className="settings-card" id="settings-startup"><h3>Startup & wake phrase</h3>
             <label className="check-label">
               <input
                 type="checkbox"
@@ -2521,8 +2562,8 @@ export default function App() {
               stopped. Wake detection adds transcription latency; audio is never
               stored.
             </p>
-            <hr />
-            <h3>Google Calendar · Read only</h3>
+            </section>
+            <section className="settings-card" id="settings-connections"><h3>Google Calendar</h3><p className="setting-note">{health?.calendar.writable_connected ? "Connected · Owner-reviewed editing" : health?.calendar.connected ? "Connected · Read only" : "Not connected"}</p>
             <p className="subtle">
               Optional network connector. Requires your own Google Desktop OAuth
               client. Refresh credentials stay in the OS keychain.
@@ -2602,13 +2643,16 @@ export default function App() {
                 {r.title} · {JSON.stringify(r.start)}
               </p>
             ))}
-            <hr />
-            <h3>Allowed applications</h3>
+            </section>
+            <section className="settings-card"><h3>Allowed applications</h3>
             <p>{health?.applications.join(" · ")}</p>
             <p className="subtle">
               Configure bundle identifiers in .env. Shell execution and external
               communications are outside the default permissions.
             </p>
+            </section>
+            <section className="settings-card"><OwnerSecurityPanel /></section>
+            </div>
           </section>
         </div>
       )}
