@@ -1,0 +1,71 @@
+{
+  "name": "jarvis-local-desktop",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A private local voice assistant",
+  "author": "Jarvis Local",
+  "license": "GPL-3.0-only",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist:mac": "electron-builder --mac dir --arm64",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "local.jarvis.desktop",
+    "productName": "Jarvis Local",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../build/jarvis-runtime",
+        "to": "runtime"
+      },
+      {
+        "from": "../vendor/whisper.cpp/build",
+        "to": "vendor/whisper.cpp/build",
+        "filter": [
+          "bin/whisper-server*",
+          "bin/*.dll"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dir",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Jarvis uses your microphone for local voice commands. Audio is processed on this computer."
+      },
+      "icon": "icon.icns",
+      "extraResources": [
+        {
+          "from": "../native/mac-voice",
+          "to": "native/mac-voice"
+        }
+      ]
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "productName": "Jarvis Local"
+}

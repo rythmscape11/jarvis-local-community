@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+command -v python3 >/dev/null || { echo 'Install Python 3.11 or newer'; exit 1; }
+# Common native macOS Node installations; no modification of global shell files.
+if ! command -v npm >/dev/null; then
+  for jarvis_node in "$HOME"/.nvm/versions/node/v22*/bin "$HOME"/.nvm/versions/node/v24*/bin /opt/homebrew/bin; do
+    if test -x "$jarvis_node/npm"; then PATH="$jarvis_node:$PATH"; export PATH; break; fi
+  done
+fi
+command -v npm >/dev/null || { echo 'Install Node 22 LTS or newer'; exit 1; }
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.lock
+npm ci --prefix frontend
+npm run build --prefix frontend
+test -f .env || cp .env.example .env
+mkdir -p models data vendor
+if ! test -d vendor/whisper.cpp; then git clone --depth 1 --branch v1.8.3 https://github.com/ggml-org/whisper.cpp vendor/whisper.cpp; fi
+cmake -S vendor/whisper.cpp -B vendor/whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_SERVER=ON
+cmake --build vendor/whisper.cpp/build -j 4
+swiftc native/mac-voice.swift -o native/mac-voice
+.venv/bin/python scripts/start.py --download-models
+echo 'Setup complete. Install native Ollama if needed, run ./start, then in another terminal: OLLAMA_HOST=127.0.0.1:11437 ollama pull qwen3:4b-instruct'

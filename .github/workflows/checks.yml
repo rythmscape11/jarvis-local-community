@@ -1,0 +1,48 @@
+name: Source checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: source-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: backend
+      JARVIS_WARMUP: '0'
+      JARVIS_NEWS_SCHEDULER: '0'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11.9'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.13.0'
+      - run: pip install -r requirements.lock
+      - name: Download pinned VAD test asset only
+        run: |
+          mkdir -p models
+          python - <<'PY'
+          import urllib.request
+          from pathlib import Path
+          from jarvis.model_assets import ASSETS, digest
+          path = Path('models/silero_vad.onnx')
+          url, checksum = ASSETS[path.name]
+          with urllib.request.urlopen(url,timeout=60) as response:
+              path.write_bytes(response.read(4000000))
+          assert digest(path)==checksum
+          PY
+      - run: ruff check backend/jarvis backend/tests
+      - run: pip check
+      - run: pytest -q backend/tests
+      - run: npm ci --prefix frontend
+      - run: npm run build --prefix frontend
+      - run: npm test --prefix frontend

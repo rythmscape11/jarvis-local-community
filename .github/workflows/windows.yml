@@ -1,0 +1,75 @@
+name: Windows installer verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jarvis-windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      PYTHONUTF8: "1"
+      PYTHONPATH: backend
+      JARVIS_WARMUP: "0"
+      JARVIS_NEWS_SCHEDULER: "0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.9"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.13.0"
+      - name: Set up pinned dependencies and compile native Whisper
+        shell: pwsh
+        run: ./scripts/setup-windows.ps1 -SkipModelDownload
+      - name: Download and verify only the small VAD test asset
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import urllib.request
+          from jarvis.model_assets import ASSETS, digest
+          path = Path('models/silero_vad.onnx')
+          url, expected = ASSETS[path.name]
+          request = urllib.request.Request(url, headers={'User-Agent': 'Jarvis-CI/0.1'})
+          with urllib.request.urlopen(request, timeout=60) as response:
+              path.write_bytes(response.read(4000000))
+          assert digest(path) == expected
+          '@ | .venv/Scripts/python.exe -
+          if ($LASTEXITCODE -ne 0) { throw 'VAD verification failed' }
+      - name: Backend regression tests and dependency checks
+        shell: pwsh
+        run: |
+          .venv/Scripts/python.exe -m pytest backend/tests -q
+          if ($LASTEXITCODE -ne 0) { throw 'Backend tests failed' }
+          .venv/Scripts/python.exe -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Incompatible Python dependencies' }
+          .venv/Scripts/ruff.exe check backend scripts
+          if ($LASTEXITCODE -ne 0) { throw 'Python static checks failed' }
+      - name: Frontend tests
+        shell: pwsh
+        run: |
+          npm test --prefix frontend
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend tests failed' }
+      - name: Package the Windows NSIS installer
+        shell: pwsh
+        run: ./scripts/package-windows.ps1
+      - name: Run the actual frozen backend against isolated records
+        shell: pwsh
+        run: |
+          .venv/Scripts/python.exe scripts/ci-runtime-smoke.py build/jarvis-runtime/jarvis-runtime.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen backend smoke test failed' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: jarvis-windows-development-installer
+          path: |
+            desktop/release/*.exe
+            docs/ci-runtime-smoke.json
+          if-no-files-found: error
+          retention-days: 1

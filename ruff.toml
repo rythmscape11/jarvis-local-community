@@ -1,0 +1,3 @@
+[lint.per-file-ignores]
+# These source launchers add the backend root before importing its modules.
+"scripts/*.py" = ["E402"]

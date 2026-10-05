@@ -1,0 +1,172 @@
+.automation-space {
+  max-width: 1080px;
+  margin: auto;
+  padding: 24px 28px 80px;
+  overflow-wrap: anywhere;
+}
+.automation-heading h2 {
+  font-size: 30px;
+  letter-spacing: -0.8px;
+  margin-bottom: 10px;
+}
+.automation-space p,
+.automation-space small {
+  color: var(--muted, #93a59e);
+  line-height: 1.6;
+}
+.automation-nav,
+.automation-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.automation-nav button,
+.automation-actions button,
+.automation-space form button,
+.automation-space details button {
+  padding: 10px 15px;
+  border: 1px solid #41574d;
+  border-radius: 9px;
+  background: #13201a;
+  color: #eaf6ee;
+  cursor: pointer;
+}
+.automation-nav .selected {
+  background: #294b3c;
+  border-color: #75b797;
+}
+.automation-space button:focus-visible,
+.automation-space input:focus-visible,
+.automation-space textarea:focus-visible,
+.automation-space select:focus-visible {
+  outline: 3px solid #8ddcb1;
+  outline-offset: 3px;
+}
+.automation-space button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.automation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+.automation-template {
+  background: #122019;
+  border: 1px solid #354d40;
+  color: #eef6f0;
+  padding: 20px;
+  text-align: left;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.automation-template span {
+  font-size: 16px;
+  font-weight: 600;
+}
+.automation-template p {
+  font-size: 13px;
+  margin: 10px 0;
+}
+.automation-template:hover {
+  border-color: #80baa0;
+}
+.automation-card {
+  padding: 18px;
+  border: 1px solid #344e40;
+  border-radius: 12px;
+  margin: 14px 0;
+  background: #111e17;
+}
+.automation-card h3 {
+  margin: 0 0 8px;
+}
+.automation-card summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.automation-space pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 500px;
+  overflow: auto;
+  font: 14px/1.7 inherit;
+  background: #0c1711;
+  padding: 16px;
+  border-radius: 8px;
+}
+.automation-space a {
+  color: #a5e2bd;
+  display: inline-block;
+  margin: 15px 0;
+}
+.automation-form {
+  padding: 22px;
+  background: #101e17;
+  border: 1px solid #3b5748;
+  border-radius: 12px;
+  margin: 22px 0;
+  max-width: 800px;
+}
+.automation-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  font-size: 14px;
+}
+.automation-form input,
+.automation-form textarea,
+.automation-form select {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  background: #0b1710;
+  border: 1px solid #50705e;
+  color: #f0f9f3;
+  border-radius: 7px;
+  padding: 12px;
+  font: inherit;
+}
+.automation-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.automation-form .automation-check {
+  flex-direction: row;
+  align-items: center;
+}
+.automation-check input {
+  width: auto;
+}
+.automation-error {
+  color: #ffcbbe !important;
+  background: #41231c;
+  padding: 14px;
+  border-radius: 8px;
+}
+.automation-caption {
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .automation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .automation-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .automation-space {
+    padding: 16px 12px 60px;
+  }
+  .automation-grid {
+    grid-template-columns: 1fr;
+  }
+  .automation-heading h2 {
+    font-size: 25px;
+  }
+}
