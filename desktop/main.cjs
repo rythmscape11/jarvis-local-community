@@ -218,9 +218,9 @@ app
         autoplayPolicy: "no-user-gesture-required",
       },
     });
-    window.webContents.on("before-input-event", (event, input) => {
+    window.webContents.on("before-input-event", (_event, input) => {
       if (input.type === "keyDown" && input.key === "Escape") {
-        event.preventDefault();
+        // Preserve the renderer's Escape handler for dialogs and focus restoration.
         window.webContents.send("conversation:pause");
       }
     });

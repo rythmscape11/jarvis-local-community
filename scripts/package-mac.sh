@@ -8,5 +8,5 @@ npm ci --prefix desktop
 CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:mac --prefix desktop
 # Seal the development bundle after adding resources. This is not Developer ID
 # signing or notarization; those remain separate distribution prerequisites.
-codesign --force --deep --sign - --options runtime --entitlements desktop/entitlements.mac.plist "desktop/release/mac-arm64/Jarvis Local.app"
+codesign --force --deep --sign - --options runtime --entitlements desktop/entitlements.adhoc.mac.plist "desktop/release/mac-arm64/Jarvis Local.app"
 codesign --verify --deep --strict "desktop/release/mac-arm64/Jarvis Local.app"
